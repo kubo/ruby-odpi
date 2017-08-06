@@ -1,0 +1,298 @@
+#ifndef RBDPI_H
+#define RBDPI_H 1
+#include <ruby.h>
+#include <ruby/encoding.h>
+#include <dpi.h>
+#include "rbdpi-func.h"
+
+#define DEFAULT_DRIVER_NAME "ruby-odpi : 0.0.1"
+
+#ifdef WIN32
+#define mutex_t CRITICAL_SECTION
+#define mutex_init(mutex) InitializeCriticalSection(&mutex)
+#define mutex_destroy(mutex) DeleteCriticalSection(&mutex)
+#define mutex_lock(mutex) EnterCriticalSection(&mutex)
+#define mutex_unlock(mutex) LeaveCriticalSection(&mutex)
+#else
+#include "pthread.h"
+#define mutex_t pthread_mutex_t
+#define mutex_init(mutex) pthread_mutex_init(mutex, NULL)
+#define mutex_destroy(mutex) pthread_mutex_destroy(mutex)
+#define mutex_lock(mutex) pthread_mutex_lock(mutex)
+#define mutex_unlock(mutex) pthread_mutex_unlock(mutex)
+#endif
+
+typedef struct {
+    const rb_encoding *enc;  /* CHAR encoding */
+    const rb_encoding *nenc; /* NCHAR encoding */
+} rbdpi_enc_t;
+
+typedef struct subscr_callback_ctx subscr_callback_ctx_t;
+
+typedef struct {
+    dpiConn *handle;
+    rbdpi_enc_t enc;
+} conn_t;
+
+typedef struct {
+    dpiDeqOptions *handle;
+    rb_encoding *enc;
+} deq_options_t;
+
+typedef struct {
+    dpiEnqOptions *handle;
+    rb_encoding *enc;
+} enq_options_t;
+
+typedef struct {
+    dpiLob *handle;
+    rbdpi_enc_t enc;
+    dpiOracleTypeNum oracle_type;
+} lob_t;
+
+typedef struct {
+    dpiMsgProps *handle;
+    rb_encoding *enc;
+} msg_props_t;
+
+typedef struct {
+    dpiObjectAttr *handle;
+    rbdpi_enc_t enc;
+    dpiObjectAttrInfo info;
+    VALUE objtype;
+} object_attr_t;
+
+typedef struct {
+    dpiObjectType *handle;
+    rbdpi_enc_t enc;
+    dpiObjectTypeInfo info;
+    VALUE elem_objtype;
+} object_type_t;
+
+typedef struct {
+    dpiObject *handle;
+    VALUE objtype;
+    object_type_t *object_type;
+} object_t;
+
+typedef struct {
+    dpiPool *handle;
+} pool_t;
+
+typedef struct {
+    dpiStmt *handle;
+    rbdpi_enc_t enc;
+    dpiStmtInfo info;
+    VALUE query_columns_cache;
+} stmt_t;
+
+typedef struct {
+    dpiRowid *handle;
+} rowid_t;
+
+typedef struct {
+    dpiSubscr *handle;
+    uint32_t subscr_id;
+    rbdpi_enc_t enc;
+    subscr_callback_ctx_t *callback_ctx;
+} subscr_t;
+
+typedef struct {
+    dpiVar *handle;
+    rbdpi_enc_t enc;
+    dpiOracleTypeNum oracle_type;
+    dpiNativeTypeNum native_type;
+    VALUE objtype;
+} var_t;
+
+#define rbdpi_raise_error(error) rb_exc_raise(rbdpi_from_dpiErrorInfo(error))
+
+/* Check whether nil or safe string */
+#define CHK_NSTR(v) do { \
+    if (!NIL_P(v)) { \
+        SafeStringValue(v); \
+    } \
+} while (0)
+
+/* Check whether safe string and covert encoding */
+#define CHK_STR_ENC(v, enc) do { \
+    SafeStringValue(v); \
+    (v) = rb_str_export_to_enc(v, enc); \
+} while (0)
+
+/* Check whether nil or safe string and covert encoding */
+#define CHK_NSTR_ENC(v, enc) do { \
+    if (!NIL_P(v)) { \
+        CHK_STR_ENC(v, enc); \
+    } \
+} while (0)
+
+#define NSTR_PTR(v) (!NIL_P(v) ? RSTRING_PTR(v) : NULL)
+#define NSTR_LEN(v) (!NIL_P(v) ? RSTRING_LEN(v) : 0)
+#define NSTR_LEN_PTR_PAIR(obj) (int)NSTR_LEN(obj), NSTR_PTR(obj)
+#define STR_NEW_ENC(v, len, enc) rb_external_str_new_with_enc((v), (len), (enc));
+#define NSTR_NEW_ENC(v, len, enc) ((len) ? rb_external_str_new_with_enc((v), (len), (enc)) : Qnil)
+
+#define CHK(func) do { \
+    if ((func) != DPI_SUCCESS) { \
+        rbdpi_raise_error(NULL); \
+    } \
+} while (0)
+
+enum enc_type {
+    ENC_TYPE_CHAR,
+    ENC_TYPE_NCHAR,
+    ENC_TYPE_OTHER,
+};
+
+static inline enum enc_type rbdpi_ora2enc_type(dpiOracleTypeNum oratype)
+{
+    switch (oratype) {
+    case DPI_ORACLE_TYPE_VARCHAR:
+    case DPI_ORACLE_TYPE_CHAR:
+    case DPI_ORACLE_TYPE_CLOB:
+    case DPI_ORACLE_TYPE_LONG_VARCHAR:
+        return ENC_TYPE_CHAR;
+    case DPI_ORACLE_TYPE_NVARCHAR:
+    case DPI_ORACLE_TYPE_NCHAR:
+    case DPI_ORACLE_TYPE_NCLOB:
+        return ENC_TYPE_NCHAR;
+    default:
+        return ENC_TYPE_OTHER;
+    }
+}
+
+/* rbdpi.c */
+extern const dpiContext *rbdpi_g_context;
+VALUE rbdpi_initialize_error(VALUE self);
+
+/* rbdpi-conn.c */
+void Init_rbdpi_conn(VALUE mDpi);
+VALUE rbdpi_from_conn(dpiConn *conn);
+conn_t *rbdpi_to_conn(VALUE obj);
+
+/* rbdpi-data.c */
+VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype);
+VALUE rbdpi_to_dpiData(dpiData *data, VALUE val, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype);
+
+/* rbdpi-deq-options.c */
+void Init_rbdpi_deq_options(VALUE mDpi);
+VALUE rbdpi_from_deq_options(dpiDeqOptions *options, rb_encoding *enc);
+deq_options_t *rbdpi_to_deq_options(VALUE obj);
+
+/* rbdpi-enq-options.c */
+void Init_rbdpi_enq_options(VALUE mDpi);
+VALUE rbdpi_from_enq_options(dpiEnqOptions *options, rb_encoding *enc);
+enq_options_t *rbdpi_to_enq_options(VALUE obj);
+
+/* rbdpi-enum.c */
+void Init_rbdpi_enum(void);
+VALUE rbdpi_from_dpiAuthMode(dpiAuthMode val);
+VALUE rbdpi_from_dpiCreateMode(dpiCreateMode val);
+VALUE rbdpi_from_dpiDeqMode(dpiDeqMode val);
+VALUE rbdpi_from_dpiDeqNavigation(dpiDeqNavigation val);
+VALUE rbdpi_from_dpiEventType(dpiEventType val);
+VALUE rbdpi_from_dpiMessageDeliveryMode(dpiMessageDeliveryMode val);
+VALUE rbdpi_from_dpiMessageState(dpiMessageState val);
+VALUE rbdpi_from_dpiNativeTypeNum(dpiNativeTypeNum val);
+VALUE rbdpi_from_dpiOpCode(dpiOpCode val);
+VALUE rbdpi_from_dpiOracleTypeNum(dpiOracleTypeNum val);
+VALUE rbdpi_from_dpiPoolGetMode(dpiPoolGetMode val);
+VALUE rbdpi_from_dpiPurity(dpiPurity val);
+VALUE rbdpi_from_dpiStatementType(dpiStatementType val);
+VALUE rbdpi_from_dpiSubscrNamespace(dpiSubscrNamespace val);
+VALUE rbdpi_from_dpiSubscrProtocol(dpiSubscrProtocol val);
+VALUE rbdpi_from_dpiSubscrQOS(dpiSubscrQOS val);
+VALUE rbdpi_from_dpiVisibility(dpiVisibility val);
+dpiAuthMode rbdpi_to_dpiAuthMode(VALUE val);
+dpiConnCloseMode rbdpi_to_dpiConnCloseMode(VALUE val);
+dpiDeqMode rbdpi_to_dpiDeqMode(VALUE val);
+dpiDeqNavigation rbdpi_to_dpiDeqNavigation(VALUE val);
+dpiExecMode rbdpi_to_dpiExecMode(VALUE val);
+dpiFetchMode rbdpi_to_dpiFetchMode(VALUE val);
+dpiMessageDeliveryMode rbdpi_to_dpiMessageDeliveryMode(VALUE val);
+dpiNativeTypeNum rbdpi_to_dpiNativeTypeNum(VALUE val);
+dpiOpCode rbdpi_to_dpiOpCode(VALUE val);
+dpiOracleTypeNum rbdpi_to_dpiOracleTypeNum(VALUE val);
+dpiPoolCloseMode rbdpi_to_dpiPoolCloseMode(VALUE val);
+dpiPoolGetMode rbdpi_to_dpiPoolGetMode(VALUE val);
+dpiPurity rbdpi_to_dpiPurity(VALUE val);
+dpiShutdownMode rbdpi_to_dpiShutdownMode(VALUE val);
+dpiStartupMode rbdpi_to_dpiStartupMode(VALUE val);
+dpiSubscrNamespace rbdpi_to_dpiSubscrNamespace(VALUE val);
+dpiSubscrProtocol rbdpi_to_dpiSubscrProtocol(VALUE val);
+dpiSubscrQOS rbdpi_to_dpiSubscrQOS(VALUE val);
+dpiVisibility rbdpi_to_dpiVisibility(VALUE val);
+
+/* rbdpi-lob.c */
+void Init_rbdpi_lob(VALUE mDpi);
+VALUE rbdpi_from_lob(dpiLob *lob, const rbdpi_enc_t *enc, dpiOracleTypeNum oracle_type_num);
+lob_t *rbdpi_to_lob(VALUE obj);
+
+/* rbdpi-msg-props.c */
+void Init_rbdpi_msg_props(VALUE mDpi);
+VALUE rbdpi_from_msg_props(dpiMsgProps *msg_props, rb_encoding *enc);
+msg_props_t *rbdpi_to_msg_props(VALUE obj);
+
+/* rbdpi-object.c */
+void Init_rbdpi_object(VALUE mDpi);
+VALUE rbdpi_from_object(dpiObject *object, VALUE objtype);
+object_t *rbdpi_to_object(VALUE obj);
+
+/* rbdpi-object-attr.c */
+void Init_rbdpi_object_attr(VALUE mDpi);
+VALUE rbdpi_from_object_attr(dpiObjectAttr *attr, const rbdpi_enc_t *enc);
+object_attr_t *rbdpi_to_object_attr(VALUE obj);
+
+/* rbdpi-object-type.c */
+void Init_rbdpi_object_type(VALUE mDpi);
+VALUE rbdpi_from_object_type(dpiObjectType *type, const rbdpi_enc_t *enc);
+object_type_t *rbdpi_to_object_type(VALUE obj);
+
+/* rbdpi-pool.c */
+void Init_rbdpi_pool(VALUE mDpi);
+pool_t *rbdpi_to_pool(VALUE obj);
+
+/* rbdpi-rowid.c */
+void Init_rbdpi_rowid(VALUE mDpi);
+VALUE rbdpi_from_rowid(dpiRowid *rowid);
+rowid_t *rbdpi_to_rowid(VALUE obj);
+
+/* rbdpi-stmt.c */
+void Init_rbdpi_stmt(VALUE mDpi);
+VALUE rbdpi_from_stmt(dpiStmt *stmt, const rbdpi_enc_t *enc);
+stmt_t *rbdpi_to_stmt(VALUE obj);
+
+/* rbdpi-struct.c */
+void Init_rbdpi_struct(VALUE mDpi);
+void rbdpi_copy_dpiConnCreateParams(VALUE dest, const dpiConnCreateParams *src);
+void rbdpi_copy_dpiPoolCreateParams(VALUE dest, const dpiPoolCreateParams *src);
+void rbdpi_fill_dpiCommonCreateParams(dpiCommonCreateParams *params, VALUE val);
+void rbdpi_fill_dpiConnCreateParams(dpiConnCreateParams *params, VALUE val);
+void rbdpi_fill_dpiPoolCreateParams(dpiPoolCreateParams *params, VALUE val);
+void rbdpi_fill_dpiSubscrCreateParams(dpiSubscrCreateParams *params, VALUE val);
+VALUE rbdpi_from_dpiEncodingInfo(const dpiEncodingInfo *info);
+VALUE rbdpi_from_dpiErrorInfo(const dpiErrorInfo *error);
+VALUE rbdpi_from_dpiIntervalDS(const dpiIntervalDS *intvl);
+VALUE rbdpi_from_dpiIntervalYM(const dpiIntervalYM *intvl);
+VALUE rbdpi_from_dpiQueryInfo(const dpiQueryInfo *info, const rbdpi_enc_t *enc);
+VALUE rbdpi_from_dpiTimestamp(const dpiTimestamp *ts);
+void rbdpi_to_dpiIntervalDS(dpiIntervalDS *intvl, VALUE val);
+void rbdpi_to_dpiIntervalYM(dpiIntervalYM *intvl, VALUE val);
+void rbdpi_to_dpiTimestamp(dpiTimestamp *ts, VALUE val);
+
+/* rbdpi-subscr.c */
+void Init_rbdpi_subscr(VALUE mDpi);
+VALUE rbdpi_subscr_prepare(subscr_t **out, dpiSubscrCreateParams *params, const rbdpi_enc_t *enc);
+void rbdpi_subscr_start(subscr_t *subscr);
+
+/* rbdpi-var.c */
+void Init_rbdpi_var(VALUE mDpi);
+VALUE rbdpi_from_var(dpiVar *var, const rbdpi_enc_t *enc, dpiOracleTypeNum oracle_type, dpiNativeTypeNum native_type, VALUE objtype);
+var_t *rbdpi_to_var(VALUE obj);
+
+/* rbdpi-version-info.c */
+void Init_rbdpi_version_info(VALUE mDpi);
+VALUE rbdpi_from_dpiVersionInfo(const dpiVersionInfo *ver);
+
+#endif

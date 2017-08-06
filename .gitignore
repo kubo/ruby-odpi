@@ -1,0 +1,8 @@
+/.yardoc/
+/doc
+/ext/odpi_ext/Makefile
+/ext/odpi_ext/rbdpi-func.c
+/ext/odpi_ext/rbdpi-func.h
+*.o
+*.so
+*~
