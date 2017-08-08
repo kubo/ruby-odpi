@@ -2,6 +2,8 @@ require 'mkmf'
 require 'yaml'
 require 'pp'
 
+require File.dirname(__FILE__) + '/../../lib/odpi/version.rb'
+
 class FuncDef
   attr_reader :name
   attr_reader :args
@@ -114,6 +116,8 @@ $CFLAGS += " -I../../odpi/include"
 $objs = (Dir['../../odpi/src/*.c'] + Dir['*.c']).collect do |src|
   File.basename(src, '.c') + '.o'
 end
+
+$defs << "-DRBODPI_VERSION=\\\"#{ODPI::VERSION}\\\""
 
 $VPATH << '../../odpi/src'
 

@@ -39,7 +39,7 @@
 #include <dpi.h>
 #include "rbdpi-func.h"
 
-#define DEFAULT_DRIVER_NAME "ruby-odpi : 0.0.1"
+#define DEFAULT_DRIVER_NAME "ruby-odpi_ext : " RBODPI_VERSION
 
 #ifdef WIN32
 #define mutex_t CRITICAL_SECTION
