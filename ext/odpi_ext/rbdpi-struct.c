@@ -31,6 +31,21 @@
  * authors and should not be interpreted as representing official policies, either expressed
  * or implied, of the authors.
  *
+ * ------------------------------------------------------
+ * The license of documentation comments in this file is same with
+ * ODPI-C because most of them were copied from ODPI-C documents.
+ * The ODPI-C license is:
+ *
+ * Copyright (c) 2016, 2017 Oracle and/or its affiliates.  All rights reserved.
+ * This program is free software: you can modify it and/or redistribute it
+ * under the terms of:
+ *
+ * (i)  the Universal Permissive License v 1.0 or at your option, any
+ *      later version (http://oss.oracle.com/licenses/upl); and/or
+ *
+ * (ii) the Apache License v 2.0. (http://www.apache.org/licenses/LICENSE-2.0)
+ *
+ * ------------------------------------------------------
  */
 #include "rbdpi.h"
 
@@ -71,7 +86,14 @@ static inline void check_and_create_str(VALUE *obj, const char *ptr, uint32_t le
     *obj = rb_str_new(ptr, len);
 }
 
-/* CommonCreateParams */
+/*
+ * Document-class: ODPI::Dpi::CommonCreateParams
+ *
+ * This class is used for creating session pools and standalone connections to the database.
+ *
+ * @see ODPI::Dpi::Conn#initialize
+ * @see ODPI::Dpi::Pool#initialize
+ */
 typedef struct {
     dpiCommonCreateParams params;
     VALUE encoding;
@@ -116,12 +138,18 @@ static VALUE common_cp_alloc(VALUE klass)
     return obj;
 }
 
+/*
+ * @private
+ */
 static VALUE common_cp_initialize_copy(VALUE self, VALUE other)
 {
     *TO_COMMON_CP(self) = *TO_COMMON_CP(other);
     return self;
 }
 
+/*
+ * @private
+ */
 static VALUE common_cp_inspect(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -133,6 +161,13 @@ static VALUE common_cp_inspect(VALUE self)
                       NSTR_LEN_PTR_PAIR(ccp->edition), NSTR_LEN_PTR_PAIR(ccp->driver_name));
 }
 
+/*
+ * Gets events mode which is required for the use of advanced queuing
+ * (AQ) and continuous query notification (CQN).
+ *
+ * @return [Boolean]
+ * @see #events=
+ */
 static VALUE common_cp_get_events(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -140,18 +175,30 @@ static VALUE common_cp_get_events(VALUE self)
     return (ccp->params.createMode & DPI_MODE_CREATE_EVENTS) ? Qtrue : Qfalse;
 }
 
-static VALUE common_cp_set_events(VALUE self, VALUE val)
+/*
+ * Enables or disables events mode which is required for the use of
+ * advanced queuing (AQ) and continuous query notification (CQN).
+ *
+ * @param mode [Boolean]
+ */
+static VALUE common_cp_set_events(VALUE self, VALUE mode)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
 
-    if (RTEST(val)) {
+    if (RTEST(mode)) {
         ccp->params.createMode |= DPI_MODE_CREATE_EVENTS;
     } else {
         ccp->params.createMode &= ~DPI_MODE_CREATE_EVENTS;
     }
-    return val;
+    return mode;
 }
 
+/*
+ * Gets the encoding to use for CHAR data.
+ *
+ * @return [String]
+ * @see #encoding=
+ */
 static VALUE common_cp_get_encoding(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -159,14 +206,29 @@ static VALUE common_cp_get_encoding(VALUE self)
     return ccp->encoding;
 }
 
-static VALUE common_cp_set_encoding(VALUE self, VALUE val)
+/*
+ * Specifies the encoding to use for CHAR data. Either an IANA or
+ * Oracle specific character set name is expected. +nil+ is also
+ * acceptable which implies the use of the NLS_LANG environment
+ * variable (or ASCII, if the NLS_LANG environment variable is not
+ * set). The default value is +nil+.
+ *
+ * @param encname [String or nil] IANA or Oracle specific character set name
+ */
+static VALUE common_cp_set_encoding(VALUE self, VALUE name)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
 
-    ccp->encoding = check_safe_cstring_or_nil(val);
-    return val;
+    ccp->encoding = check_safe_cstring_or_nil(name);
+    return name;
 }
 
+/*
+ * Gets the encoding to use for NCHAR data.
+ *
+ * @return [String or nil]
+ * @see #nencoding=
+ */
 static VALUE common_cp_get_nencoding(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -174,14 +236,30 @@ static VALUE common_cp_get_nencoding(VALUE self)
     return ccp->nencoding;
 }
 
-static VALUE common_cp_set_nencoding(VALUE self, VALUE val)
+/*
+ * Specifies the encoding to use for NCHAR data. Either an IANA or
+ * Oracle specific character set name is expected. +nil+ is also
+ * acceptable which implies the use of the NLS_NCHAR environment
+ * variable (or the same value as the {#encoding} if the
+ * NLS_NCHAR environment variable is not set). The default value is
+ * +nil+.
+ *
+ * @param encname [String or nil] IANA or Oracle specific character set name
+ */
+static VALUE common_cp_set_nencoding(VALUE self, VALUE name)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
 
-    ccp->nencoding = check_safe_cstring_or_nil(val);
-    return val;
+    ccp->nencoding = check_safe_cstring_or_nil(name);
+    return name;
 }
 
+/*
+ * Gets the edition to be used when creating a standalone
+ * connection.
+ *
+ * @return [String or nil]
+ */
 static VALUE common_cp_get_edition(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -189,15 +267,28 @@ static VALUE common_cp_get_edition(VALUE self)
     return ccp->edition;
 }
 
-static VALUE common_cp_set_edition(VALUE self, VALUE val)
+/*
+ * Specifies the edition to be used when creating a standalone
+ * connection. It is expected to be +nil+ (meaning that no edition is
+ * set) or a string in the encoding specified by the {#encoding}. The
+ * default value is +nil+.
+ *
+ * @param edition [String or nil]
+ */
+static VALUE common_cp_set_edition(VALUE self, VALUE edition)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
 
-    CHK_NSTR(val);
-    ccp->edition = val;
-    return val;
+    CHK_NSTR(edition);
+    ccp->edition = edition;
+    return edition;
 }
 
+/*
+ * Gets the name of the driver that is being used.
+ *
+ * @return [String or nil]
+ */
 static VALUE common_cp_get_driver_name(VALUE self)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
@@ -205,13 +296,20 @@ static VALUE common_cp_get_driver_name(VALUE self)
     return ccp->driver_name;
 }
 
-static VALUE common_cp_set_driver_name(VALUE self, VALUE val)
+/*
+ * Specifies the name of the driver that is being used. It is expected
+ * to be +nil+ or a string in the encoding specified by the
+ * {#encoding}. The default value is "ruby-odpi_ext : version".
+ *
+ * @param name [String or nil]
+ */
+static VALUE common_cp_set_driver_name(VALUE self, VALUE name)
 {
     common_cp_t *ccp = TO_COMMON_CP(self);
 
-    CHK_NSTR(val);
-    ccp->driver_name = val;
-    return val;
+    CHK_NSTR(name);
+    ccp->driver_name = name;
+    return name;
 }
 
 /* ConnCreateParams */
