@@ -14,7 +14,7 @@ Ruby-ODPI consists of the following two layers.
 
 ## Documents
 
-Nothing yet
+http://www.rubydoc.info/github/kubo/ruby-odpi/master
 
 ## License
 

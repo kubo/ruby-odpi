@@ -3,8 +3,8 @@
 #   Tests continuous query notification.
 #-----------------------------------------------------------------------------
 #
-# This is ported from Test_CQN.c in ODPI-C.
-# The original copyright is below.
+# This was ported from Test_CQN.c in ODPI-C.
+# The following is the original copyright:
 #-----------------------------------------------------------------------------
 # Copyright (c) 2016, 2017 Oracle and/or its affiliates.  All rights reserved.
 # This program is free software: you can modify it and/or redistribute it
@@ -58,7 +58,7 @@ end
 # NOTE: events mode must be configured
 create_params = ODPI::Dpi::CommonCreateParams.new
 create_params.events = true
-conn = ODPI::Dpi::Conn.new($conn_username, $conn_password, $conn_connect_string, create_params, nil)
+conn = ODPI::Dpi::Conn.new($main_user, $main_password, $connect_string, create_params, nil)
 
 # create subscription
 params = ODPI::Dpi::SubscrCreateParams.new

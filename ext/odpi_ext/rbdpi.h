@@ -68,6 +68,19 @@ typedef struct {
     rbdpi_enc_t enc;
 } conn_t;
 
+/* ODPI::Dpi::DataType
+ *
+ * Don't access info.objectType.
+ * It must be accessed via the objtype member.
+ */
+typedef struct {
+    const dpiDataTypeInfo *info;
+    VALUE owner;
+    VALUE self;
+    VALUE objtype; /* ODPI::Dpi::ObjectType or nil */
+    rbdpi_enc_t enc;
+} data_type_t;
+
 typedef struct {
     dpiDeqOptions *handle;
     rb_encoding *enc;
@@ -93,14 +106,14 @@ typedef struct {
     dpiObjectAttr *handle;
     rbdpi_enc_t enc;
     dpiObjectAttrInfo info;
-    VALUE objtype;
+    VALUE datatype;
 } object_attr_t;
 
 typedef struct {
     dpiObjectType *handle;
     rbdpi_enc_t enc;
     dpiObjectTypeInfo info;
-    VALUE elem_objtype;
+    VALUE elem_datatype;
 } object_type_t;
 
 typedef struct {
@@ -206,8 +219,15 @@ VALUE rbdpi_from_conn(dpiConn *conn);
 conn_t *rbdpi_to_conn(VALUE obj);
 
 /* rbdpi-data.c */
-VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype);
-VALUE rbdpi_to_dpiData(dpiData *data, VALUE val, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype);
+VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, VALUE datatype);
+VALUE rbdpi_from_dpiData2(const dpiData *data, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype);
+VALUE rbdpi_to_dpiData(dpiData *data, VALUE val, dpiNativeTypeNum type, VALUE datatype);
+VALUE rbdpi_to_dpiData2(dpiData *data, VALUE val, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype);
+
+/* rbdpi-data-type.c */
+void Init_rbdpi_data_type(VALUE mDpi);
+VALUE rbdpi_from_dpiDataTypeInfo(const dpiDataTypeInfo *info, VALUE owner, const rbdpi_enc_t *enc);
+const data_type_t *rbdpi_to_data_type(VALUE obj);
 
 /* rbdpi-deq-options.c */
 void Init_rbdpi_deq_options(VALUE mDpi);

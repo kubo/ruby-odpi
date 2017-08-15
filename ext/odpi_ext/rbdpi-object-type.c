@@ -40,7 +40,7 @@ static void object_type_mark(void *arg)
 {
     object_type_t *objtype = (object_type_t *)arg;
 
-    rb_gc_mark(objtype->elem_objtype);
+    rb_gc_mark(objtype->elem_datatype);
 }
 
 static void object_type_free(void *arg)
@@ -98,25 +98,11 @@ static VALUE object_type_is_collection_p(VALUE self)
     return objtype->info.isCollection ? Qtrue : Qfalse;
 }
 
-static VALUE object_type_get_element_oracle_type(VALUE self)
+static VALUE object_type_get_element_type_info(VALUE self)
 {
     object_type_t *objtype = rbdpi_to_object_type(self);
 
-    return rbdpi_from_dpiOracleTypeNum(objtype->info.elementOracleTypeNum);
-}
-
-static VALUE object_type_get_element_default_native_type(VALUE self)
-{
-    object_type_t *objtype = rbdpi_to_object_type(self);
-
-    return rbdpi_from_dpiNativeTypeNum(objtype->info.elementDefaultNativeTypeNum);
-}
-
-static VALUE object_type_get_element_object_type(VALUE self)
-{
-    object_type_t *objtype = rbdpi_to_object_type(self);
-
-    return objtype->elem_objtype;
+    return objtype->elem_datatype;
 }
 
 static VALUE object_type_get_num_attributes(VALUE self)
@@ -158,9 +144,7 @@ void Init_rbdpi_object_type(VALUE mDpi)
     rb_define_method(cObjectType, "schema", object_type_get_schema, 0);
     rb_define_method(cObjectType, "name", object_type_get_name, 0);
     rb_define_method(cObjectType, "is_collection?", object_type_is_collection_p, 0);
-    rb_define_method(cObjectType, "element_oracle_type", object_type_get_element_oracle_type, 0);
-    rb_define_method(cObjectType, "element_default_native_type", object_type_get_element_default_native_type, 0);
-    rb_define_method(cObjectType, "element_object_type", object_type_get_element_object_type, 0);
+    rb_define_method(cObjectType, "element_type_info", object_type_get_element_type_info, 0);
     rb_define_method(cObjectType, "num_attributes", object_type_get_num_attributes, 0);
     rb_define_method(cObjectType, "attributes", object_type_get_attributes, 0);
 }
@@ -173,11 +157,7 @@ VALUE rbdpi_from_object_type(dpiObjectType *handle, const rbdpi_enc_t *enc)
     objtype->handle = handle;
     objtype->enc = *enc;
     CHK(dpiObjectType_getInfo(handle, &objtype->info));
-    if (objtype->info.elementObjectType != NULL) {
-        objtype->elem_objtype = rbdpi_from_object_type(objtype->info.elementObjectType, &objtype->enc);
-    } else {
-        objtype->elem_objtype = Qnil;
-    }
+    objtype->elem_datatype = rbdpi_from_dpiDataTypeInfo(&objtype->info.elementTypeInfo, obj, enc);
     return obj;
 }
 

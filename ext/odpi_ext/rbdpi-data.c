@@ -34,8 +34,16 @@
  */
 #include "rbdpi.h"
 
-VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype)
+VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, VALUE datatype)
 {
+    const data_type_t *dt = rbdpi_to_data_type(datatype);
+
+    return rbdpi_from_dpiData2(data, type, &dt->enc, dt->info->oracleTypeNum, dt->objtype);
+}
+
+VALUE rbdpi_from_dpiData2(const dpiData *data, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype)
+{
+
     if (data->isNull) {
         return Qnil;
     }
@@ -81,7 +89,14 @@ VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, const rbdpi
     rb_raise(rb_eRuntimeError, "unknown native type %d", type);
 }
 
-VALUE rbdpi_to_dpiData(dpiData *data, VALUE val, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype)
+VALUE rbdpi_to_dpiData(dpiData *data, VALUE val, dpiNativeTypeNum type, VALUE datatype)
+{
+    const data_type_t *dt = rbdpi_to_data_type(datatype);
+
+    return rbdpi_to_dpiData2(data, val, type, &dt->enc, dt->info->oracleTypeNum, dt->objtype);
+}
+
+VALUE rbdpi_to_dpiData2(dpiData *data, VALUE val, dpiNativeTypeNum type, const rbdpi_enc_t *enc, dpiOracleTypeNum oratype, VALUE objtype)
 {
     if (NIL_P(val)) {
         data->isNull = 1;

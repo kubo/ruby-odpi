@@ -1,6 +1,6 @@
-$conn_username = 'odpic'
-$conn_password = 'welcome'
-$conn_connect_string = nil
-
-# Name for a CREATE DIRECTORY command.  The directory is used by test_BFILE.rb
-$test_dir_name = 'ODPIC_DIR'
+$main_user      = ENV['ODPIC_SAMPLES_MAIN_USER']      || 'odpicdemo'
+$main_password  = ENV['ODPIC_SAMPLES_MAIN_PASSWORD']  || 'welcome'
+$proxy_user     = ENV['ODPIC_SAMPLES_PROXY_USER']     || 'odpicdemo_proxy'
+$proxy_password = ENV['ODPIC_SAMPLES_PROXY_PASSWORD'] || 'welcome'
+$connect_string = ENV['ODPIC_SAMPLES_CONNECT_STRING'] || 'localhost/orclpdb'
+$dir_name       = ENV['ODPIC_SAMPLES_DIR_NAME']       || 'odpicdemo_dir'

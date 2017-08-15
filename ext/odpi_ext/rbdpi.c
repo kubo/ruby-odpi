@@ -68,6 +68,7 @@ Init_odpi_ext()
     rb_define_singleton_method(mDpi, "oracle_client_version", oracle_client_version, 0);
 
     Init_rbdpi_conn(mDpi);
+    Init_rbdpi_data_type(mDpi);
     Init_rbdpi_deq_options(mDpi);
     Init_rbdpi_enq_options(mDpi);
     Init_rbdpi_enum();

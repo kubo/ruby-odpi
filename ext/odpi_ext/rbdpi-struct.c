@@ -61,6 +61,9 @@ static VALUE cQueryInfo;
 static VALUE cSubscrCreateParams;
 static VALUE cTimestamp;
 
+static ID id_at_name;
+static ID id_at_type_info;
+
 static inline VALUE check_safe_cstring_or_nil(VALUE val)
 {
     if (NIL_P(val)) {
@@ -213,7 +216,7 @@ static VALUE common_cp_get_encoding(VALUE self)
  * variable (or ASCII, if the NLS_LANG environment variable is not
  * set). The default value is +nil+.
  *
- * @param encname [String or nil] IANA or Oracle specific character set name
+ * @param name [String or nil] IANA or Oracle specific character set name
  */
 static VALUE common_cp_set_encoding(VALUE self, VALUE name)
 {
@@ -244,7 +247,7 @@ static VALUE common_cp_get_nencoding(VALUE self)
  * NLS_NCHAR environment variable is not set). The default value is
  * +nil+.
  *
- * @param encname [String or nil] IANA or Oracle specific character set name
+ * @param name [String or nil] IANA or Oracle specific character set name
  */
 static VALUE common_cp_set_nencoding(VALUE self, VALUE name)
 {
@@ -1110,168 +1113,48 @@ static VALUE pool_cp_get_pool_name(VALUE self)
     return pcp->pool_name;
 }
 
-/* QueryInfo */
-typedef struct {
-    dpiQueryInfo info;
-    VALUE name;
-    rbdpi_enc_t enc;
-} query_info_t;
+/*
+ * Document-class: ODPI::Dpi::QueryInfo
+ *
+ * This class represents query metadata.
+ *
+ * @see ODPI::Dpi::Stmt#query_columns
+ */
 
-static void query_info_mark(void *arg)
-{
-    query_info_t *qi = (query_info_t *)arg;
-
-    rb_gc_mark(qi->name);
-}
-
-static void query_info_free(void *arg)
-{
-    query_info_t *qi = (query_info_t *)arg;
-
-    if (qi->info.objectType != NULL) {
-        dpiObjectType_release(qi->info.objectType);
-    }
-}
-
-static size_t query_info_memsize(const void *arg)
-{
-    return sizeof(query_info_t);
-}
-
-static const struct rb_data_type_struct query_info_data_type = {
-    "ODPI::Dpi::QueryInfo",
-    {query_info_mark, query_info_free, query_info_memsize,},
-    NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
-};
-#define TO_QUERY_INFO(obj) ((query_info_t *)rb_check_typeddata(obj, &query_info_data_type))
-
-static VALUE query_info_alloc(VALUE klass)
-{
-    query_info_t *qi;
-    VALUE obj = TypedData_Make_Struct(klass, query_info_t, &query_info_data_type, qi);
-
-    qi->name = Qnil;
-    return obj;
-}
-
-static VALUE query_info_initialize_copy(VALUE self, VALUE other)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    *qi = *TO_QUERY_INFO(other);
-    if (qi->info.objectType != NULL) {
-        CHK(dpiObjectType_addRef(qi->info.objectType));
-    }
-    return self;
-}
-
+/*
+ * @private
+ */
 static VALUE query_info_inspect(VALUE self)
 {
-    query_info_t *qi = TO_QUERY_INFO(self);
+    VALUE str = rb_str_buf_new2("<");
 
-    if (qi->info.objectType == NULL) {
-        VALUE oratype = rbdpi_from_dpiOracleTypeNum(qi->info.oracleTypeNum);
-
-        return rb_sprintf("<%s: %.*s %s%s>",
-                          rb_obj_classname(self),
-                          qi->info.nameLength, qi->info.name,
-                          rb_id2name(SYM2ID(oratype)),
-                          qi->info.nullOk ? "" : " NOT NULL");
-    } else {
-        dpiObjectTypeInfo info;
-
-        if (dpiObjectType_getInfo(qi->info.objectType, &info) == DPI_SUCCESS) {
-            if (info.elementObjectType != NULL) {
-                dpiObjectType_release(info.elementObjectType);
-            }
-        } else {
-            info.schema = "?";
-            info.schemaLength = 1;
-            info.name = "?";
-            info.nameLength = 1;
-        }
-        return rb_sprintf("<%s: %.*s %.*s.%.*s%s>",
-                          rb_obj_classname(self),
-                          qi->info.nameLength, qi->info.name,
-                          info.schemaLength, info.schema,
-                          info.nameLength, info.name,
-                          qi->info.nullOk ? "" : " NOT NULL");
-    }
+    rb_str_buf_append(str, rb_obj_class(self));
+    rb_str_buf_cat_ascii(str, ": ");
+    rb_str_buf_append(str, rb_ivar_get(self, id_at_name));
+    rb_str_buf_cat_ascii(str, " ");
+    rb_str_buf_append(str, rb_ivar_get(self, id_at_type_info));
+    rb_str_buf_cat_ascii(str, ">");
+    return str;
 }
 
+/*
+ * Gets the name of the column which is being queried
+ *
+ * @return [String]
+ */
 static VALUE query_info_get_name(VALUE self)
 {
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return qi->name;
+    return rb_ivar_get(self, id_at_name);
 }
 
-static VALUE query_info_get_oracle_type(VALUE self)
+/*
+ * Gets the type of data of the column that is being queried.
+ *
+ * @return [ODPI::Dpi::DataType]
+ */
+static VALUE query_info_get_type_info(VALUE self)
 {
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return rbdpi_from_dpiOracleTypeNum(qi->info.oracleTypeNum);
-}
-
-static VALUE query_info_get_default_native_type(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return rbdpi_from_dpiNativeTypeNum(qi->info.defaultNativeTypeNum);
-}
-
-static VALUE query_info_get_db_size_in_bytes(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return UINT2NUM(qi->info.dbSizeInBytes);
-}
-
-static VALUE query_info_get_client_size_in_bytes(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return UINT2NUM(qi->info.clientSizeInBytes);
-}
-
-static VALUE query_info_get_size_in_chars(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return UINT2NUM(qi->info.sizeInChars);
-}
-
-static VALUE query_info_get_precision(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return INT2FIX(qi->info.precision);
-}
-
-static VALUE query_info_get_scale(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return INT2FIX(qi->info.scale);
-}
-
-static VALUE query_info_get_null_ok(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    return qi->info.nullOk ? Qtrue : Qfalse;
-}
-
-static VALUE query_info_get_object_type(VALUE self)
-{
-    query_info_t *qi = TO_QUERY_INFO(self);
-
-    if (qi->info.objectType != NULL) {
-        CHK(dpiObjectType_addRef(qi->info.objectType));
-        return rbdpi_from_object_type(qi->info.objectType, &qi->enc);
-    } else {
-        return Qnil;
-    }
+    return rb_ivar_get(self, id_at_type_info);
 }
 
 /* SubscrCreateParams */
@@ -1671,6 +1554,9 @@ void Init_rbdpi_struct(VALUE mDpi)
     OBJ_FREEZE(default_driver_name);
     rb_global_variable(&default_driver_name);
 
+    id_at_name = rb_intern("@name");
+    id_at_type_info = rb_intern("@type_info");
+
     /* CommonCreateParams */
     cCommonCreateParams = rb_define_class_under(mDpi, "CommonCreateParams", rb_cObject);
     rb_define_alloc_func(cCommonCreateParams, common_cp_alloc);
@@ -1791,20 +1677,10 @@ void Init_rbdpi_struct(VALUE mDpi)
 
     /* QueryInfo */
     cQueryInfo = rb_define_class_under(mDpi, "QueryInfo", rb_cObject);
-    rb_define_alloc_func(cQueryInfo, query_info_alloc);
     rb_define_method(cQueryInfo, "initialize", rbdpi_initialize_error, -1);
-    rb_define_method(cQueryInfo, "initialize_copy", query_info_initialize_copy, 1);
     rb_define_method(cQueryInfo, "inspect", query_info_inspect, 0);
     rb_define_method(cQueryInfo, "name", query_info_get_name, 0);
-    rb_define_method(cQueryInfo, "oracle_type", query_info_get_oracle_type, 0);
-    rb_define_method(cQueryInfo, "default_native_type", query_info_get_default_native_type, 0);
-    rb_define_method(cQueryInfo, "db_size_in_bytes", query_info_get_db_size_in_bytes, 0);
-    rb_define_method(cQueryInfo, "client_size_in_bytes", query_info_get_client_size_in_bytes, 0);
-    rb_define_method(cQueryInfo, "size_in_chars", query_info_get_size_in_chars, 0);
-    rb_define_method(cQueryInfo, "precision", query_info_get_precision, 0);
-    rb_define_method(cQueryInfo, "scale", query_info_get_scale, 0);
-    rb_define_method(cQueryInfo, "null_ok", query_info_get_null_ok, 0);
-    rb_define_method(cQueryInfo, "object_type", query_info_get_object_type, 0);
+    rb_define_method(cQueryInfo, "type_info", query_info_get_type_info, 0);
 
     /* SubscrCreateParams */
     cSubscrCreateParams = rb_define_class_under(mDpi, "SubscrCreateParams", rb_cObject);
@@ -2001,6 +1877,12 @@ VALUE rbdpi_from_dpiEncodingInfo(const dpiEncodingInfo *info)
 VALUE rbdpi_from_dpiErrorInfo(const dpiErrorInfo *error)
 {
     VALUE args[7];
+    dpiErrorInfo errbuf;
+
+    if (error == NULL) {
+        dpiContext_getError(rbdpi_g_context, &errbuf);
+        error = &errbuf;
+    }
 
     args[0] = rb_external_str_new_with_enc(error->message, error->messageLength, rb_enc_find(error->encoding));
     args[1] = INT2NUM(error->code);
@@ -2032,15 +1914,12 @@ VALUE rbdpi_from_dpiIntervalYM(const dpiIntervalYM *intvl)
 
 VALUE rbdpi_from_dpiQueryInfo(const dpiQueryInfo *info, const rbdpi_enc_t *enc)
 {
-    query_info_t *qi;
-    VALUE obj = TypedData_Make_Struct(cQueryInfo, query_info_t, &query_info_data_type, qi);
+    VALUE obj = rb_obj_alloc(cQueryInfo);
+    VALUE name = rb_external_str_new_with_enc(info->name, info->nameLength, enc->enc);
+    VALUE datatype = rbdpi_from_dpiDataTypeInfo(&info->typeInfo, obj, enc);
 
-    qi->info = *info;
-    qi->name = rb_external_str_new_with_enc(info->name, info->nameLength, enc->enc);
-    RB_OBJ_FREEZE(qi->name);
-    qi->info.name = RSTRING_PTR(qi->name);
-    qi->info.nameLength = RSTRING_LEN(qi->name);
-    qi->enc = *enc;
+    rb_ivar_set(obj, id_at_name, name);
+    rb_ivar_set(obj, id_at_type_info, datatype);
     return obj;
 }
 

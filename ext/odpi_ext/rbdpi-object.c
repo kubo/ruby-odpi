@@ -76,11 +76,10 @@ static VALUE object_initialize_copy(VALUE self, VALUE other)
 static VALUE object_append_element(VALUE self, VALUE val, VALUE native_type)
 {
     object_t *object = rbdpi_to_object(self);
-    object_type_t *objtype = object->object_type;
     dpiNativeTypeNum type = rbdpi_to_dpiNativeTypeNum(native_type);
     dpiData data;
 
-    val = rbdpi_to_dpiData(&data, val, type, &objtype->enc, objtype->info.elementOracleTypeNum);
+    val = rbdpi_to_dpiData(&data, val, type, object->object_type->elem_datatype);
     CHK(dpiObject_appendElement(object->handle, type, &data));
     RB_GC_GUARD(val);
     return self;
@@ -111,7 +110,7 @@ static VALUE object_get_attribute_value(VALUE self, VALUE attr, VALUE native_typ
     dpiData data;
 
     CHK(dpiObject_getAttributeValue(object->handle, objattr->handle, type, &data));
-    return rbdpi_from_dpiData(&data, type, &objattr->enc, objattr->info.oracleTypeNum, objattr->objtype);
+    return rbdpi_from_dpiData(&data, type, objattr->datatype);
 }
 
 static VALUE object_get_element_exists_by_index(VALUE self, VALUE idx)
@@ -126,12 +125,11 @@ static VALUE object_get_element_exists_by_index(VALUE self, VALUE idx)
 static VALUE object_get_element_value_by_index(VALUE self, VALUE idx, VALUE native_type)
 {
     object_t *object = rbdpi_to_object(self);
-    object_type_t *objtype = object->object_type;
     dpiNativeTypeNum type = rbdpi_to_dpiNativeTypeNum(native_type);
     dpiData data;
 
     CHK(dpiObject_getElementValueByIndex(object->handle, NUM2INT(idx), type, &data));
-    return rbdpi_from_dpiData(&data, type, &objtype->enc, objtype->info.elementOracleTypeNum, object->objtype);
+    return rbdpi_from_dpiData(&data, type, object->object_type->elem_datatype);
 }
 
 static VALUE object_get_first_index(VALUE self)
@@ -190,7 +188,7 @@ static VALUE object_set_attribute_value(VALUE self, VALUE attr, VALUE native_typ
     dpiNativeTypeNum type = rbdpi_to_dpiNativeTypeNum(native_type);
     dpiData data;
 
-    val = rbdpi_to_dpiData(&data, val, type, &objattr->enc, objattr->info.oracleTypeNum);
+    val = rbdpi_to_dpiData(&data, val, type, objattr->datatype);
     CHK(dpiObject_setAttributeValue(object->handle, objattr->handle, type, &data));
     RB_GC_GUARD(val);
     return self;
@@ -199,11 +197,10 @@ static VALUE object_set_attribute_value(VALUE self, VALUE attr, VALUE native_typ
 static VALUE object_set_element_value_by_index(VALUE self, VALUE idx, VALUE native_type, VALUE val)
 {
     object_t *object = rbdpi_to_object(self);
-    object_type_t *objtype = object->object_type;
     dpiNativeTypeNum type = rbdpi_to_dpiNativeTypeNum(native_type);
     dpiData data;
 
-    val = rbdpi_to_dpiData(&data, val, type, &objtype->enc, objtype->info.elementOracleTypeNum);
+    val = rbdpi_to_dpiData(&data, val, type, object->object_type->elem_datatype);
     CHK(dpiObject_setElementValueByIndex(object->handle, NUM2INT(idx), type, &data));
     RB_GC_GUARD(val);
     return self;

@@ -108,7 +108,7 @@ static VALUE cvar_aref(VALUE self, VALUE pos)
     if (idx >= num) {
         rb_raise(rb_eRuntimeError, "out of array index %u for %u", idx, num);
     }
-    return rbdpi_from_dpiData(data + idx, var->native_type, &var->enc, var->oracle_type, var->objtype);
+    return rbdpi_from_dpiData2(data + idx, var->native_type, &var->enc, var->oracle_type, var->objtype);
 }
 
 static VALUE cvar_aset(VALUE self, VALUE pos, VALUE val)
@@ -151,7 +151,7 @@ static VALUE cvar_aset(VALUE self, VALUE pos, VALUE val)
         CHK(dpiVar_setFromStmt(var->handle, idx, rbdpi_to_stmt(val)->handle));
         break;
     default:
-        rbdpi_to_dpiData(data + idx, val, var->native_type, &var->enc, var->oracle_type);
+        rbdpi_to_dpiData2(data + idx, val, var->native_type, &var->enc, var->oracle_type, var->objtype);
     }
     return self;
 }
