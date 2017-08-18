@@ -139,7 +139,6 @@ typedef struct {
 
 typedef struct {
     dpiSubscr *handle;
-    uint32_t subscr_id;
     rbdpi_enc_t enc;
     subscr_callback_ctx_t *callback_ctx;
 } subscr_t;

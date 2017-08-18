@@ -474,11 +474,6 @@ static VALUE subscr_initialize_copy(VALUE self, VALUE other)
     return self;
 }
 
-static VALUE subscr_id(VALUE self)
-{
-    return UINT2NUM(rbdpi_to_subscr(self)->subscr_id);
-}
-
 static VALUE subscr_close(VALUE self)
 {
     subscr_t *subscr = rbdpi_to_subscr(self);
@@ -521,7 +516,6 @@ void Init_rbdpi_subscr(VALUE mDpi)
     rb_define_method(cSubscr, "initialize", rbdpi_initialize_error, -1);
     rb_define_method(cSubscr, "initialize_copy", subscr_initialize_copy, 1);
 
-    rb_define_method(cSubscr, "id", subscr_id, 0);
     rb_define_method(cSubscr, "close", subscr_close, 0);
     rb_define_method(cSubscr, "prepare_stmt", subscr_prepare_stmt, 1);
 

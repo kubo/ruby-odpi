@@ -335,16 +335,14 @@ static VALUE conn_new_subscription(VALUE self, VALUE params)
     conn_t *conn = rbdpi_to_conn(self);
     dpiSubscrCreateParams create_params;
     dpiSubscr *handle;
-    uint32_t subscr_id;
     subscr_t *subscr;
     VALUE obj;
 
     rbdpi_fill_dpiSubscrCreateParams(&create_params, params);
     obj = rbdpi_subscr_prepare(&subscr, &create_params, &conn->enc);
-    CHK(dpiConn_newSubscription(conn->handle, &create_params, &handle, &subscr_id));
+    CHK(dpiConn_newSubscription(conn->handle, &create_params, &handle, NULL));
     RB_GC_GUARD(params);
     subscr->handle = handle;
-    subscr->subscr_id = subscr_id;
     rbdpi_subscr_start(subscr);
     return obj;
 }
