@@ -2,14 +2,17 @@
 
 Ruby-ODPI is a ruby interface for Oracle Database based on [ODPI-C][].
 
-Ruby-ODPI consists of the following two layers.
+Ruby-ODPI consists of the following two layers currently.
 
 * High-level API - easy-to-use API based on the following layer.
 * Low-level API - straightforward binding of ODPI-C functions.
 
+The low-level API may be merged into the high-level API after the author
+understand ODPI-C enough.
+
 ## Status
 
-* High-level API - Nothing
+* High-level API - In development
 * Low-level API - In development
 
 ## Documents
