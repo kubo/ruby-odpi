@@ -35,6 +35,8 @@
 #include "rbdpi.h"
 
 const dpiContext *rbdpi_g_context;
+VALUE rbdpi_sym_encoding;
+VALUE rbdpi_sym_nencoding;
 
 VALUE rbdpi_initialize_error(VALUE self)
 {
@@ -59,6 +61,9 @@ Init_odpi_ext()
     dpiErrorInfo error;
     dpiContext *context;
 
+    rbdpi_sym_encoding = ID2SYM(rb_intern("encoding"));
+    rbdpi_sym_nencoding = ID2SYM(rb_intern("nencoding"));
+
     if (dpiContext_create(DPI_MAJOR_VERSION, DPI_MINOR_VERSION, &context, &error) != DPI_SUCCESS) {
         rb_raise(rb_eLoadError, "%.*s", error.messageLength, error.message);
     }
@@ -68,6 +73,7 @@ Init_odpi_ext()
     rb_define_singleton_method(mDpi, "oracle_client_version", oracle_client_version, 0);
 
     Init_rbdpi_conn(mDpi);
+    Init_rbdpi_create_params(mODPI);
     Init_rbdpi_data_type(mDpi);
     Init_rbdpi_deq_options(mDpi);
     Init_rbdpi_enq_options(mDpi);

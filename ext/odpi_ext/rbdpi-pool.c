@@ -53,53 +53,60 @@ static VALUE pool_alloc(VALUE klass)
     return TypedData_Make_Struct(klass, pool_t, &pool_data_type, pool);
 }
 
-static VALUE pool_initialize(VALUE self, VALUE username, VALUE password, VALUE connect_string, VALUE common_params, VALUE create_params)
+static VALUE pool_initialize(VALUE self, VALUE username, VALUE password, VALUE database, VALUE params)
 {
     pool_t *pool = rbdpi_to_pool(self);
-    dpiCommonCreateParams commonParams;
-    dpiPoolCreateParams createParams;
+    dpiCommonCreateParams common_params;
+    dpiPoolCreateParams create_params;
+    VALUE gc_guard1;
+    VALUE gc_guard2;
 
-    rbdpi_fill_dpiCommonCreateParams(&commonParams, common_params);
-    rbdpi_fill_dpiPoolCreateParams(&createParams, create_params);
+    if (pool->handle != NULL) {
+        rb_raise(rb_eRuntimeError, "Try to initialize an initialized connection");
+    }
+    pool->enc = rbdpi_get_encodings(params);
+    CHK_NSTR_ENC(username, pool->enc.enc);
+    CHK_NSTR_ENC(password, pool->enc.enc);
+    CHK_NSTR_ENC(database, pool->enc.enc);
+    gc_guard1 = rbdpi_fill_dpiCommonCreateParams(&common_params, params, pool->enc.enc);
+    gc_guard2 = rbdpi_fill_dpiPoolCreateParams(&create_params, params, pool->enc.enc);
+    if (NIL_P(username) && NIL_P(password)) {
+        create_params.externalAuth = 1;
+    }
     CHK(dpiPool_create_without_gvl(rbdpi_g_context,
-                                   NIL_P(username) ? NULL : RSTRING_PTR(username),
-                                   NIL_P(username) ? 0 : RSTRING_LEN(username),
-                                   NIL_P(password) ? NULL : RSTRING_PTR(password),
-                                   NIL_P(password) ? 0 : RSTRING_LEN(password),
-                                   NIL_P(connect_string) ? NULL : RSTRING_PTR(connect_string),
-                                   NIL_P(connect_string) ? 0 : RSTRING_LEN(connect_string),
-                                   &commonParams, &createParams, &pool->handle));
+                                   NSTR_PTR(username), NSTR_LEN(username),
+                                   NSTR_PTR(password), NSTR_LEN(password),
+                                   NSTR_PTR(database), NSTR_LEN(database),
+                                   &common_params, &create_params, &pool->handle));
     RB_GC_GUARD(username);
     RB_GC_GUARD(password);
-    RB_GC_GUARD(connect_string);
-    RB_GC_GUARD(common_params);
-    if (!NIL_P(create_params)) {
-        rbdpi_copy_dpiPoolCreateParams(create_params, &createParams);
-    }
+    RB_GC_GUARD(database);
+    RB_GC_GUARD(gc_guard1);
+    RB_GC_GUARD(gc_guard2);
     return self;
 }
 
-static VALUE pool_connect(VALUE self, VALUE username, VALUE password, VALUE params)
+static VALUE pool_get_connection(VALUE self, VALUE username, VALUE password, VALUE auth_mode, VALUE params)
 {
     pool_t *pool = rbdpi_to_pool(self);
     dpiConn *conn;
-    dpiConnCreateParams createParams;
-    VALUE obj;
+    dpiConnCreateParams create_params;
+    VALUE gc_guard;
 
-    rbdpi_fill_dpiConnCreateParams(&createParams, params);
+    CHK_NSTR_ENC(username, pool->enc.enc);
+    CHK_NSTR_ENC(password, pool->enc.enc);
+    gc_guard = rbdpi_fill_dpiConnCreateParams(&create_params, params, auth_mode, pool->enc.enc);
+    if (NIL_P(username) && NIL_P(password)) {
+        create_params.externalAuth = 1;
+    }
     CHK(dpiPool_acquireConnection_without_gvl(pool->handle,
-                                              NIL_P(username) ? NULL : RSTRING_PTR(username),
-                                              NIL_P(username) ? 0 : RSTRING_LEN(username),
-                                              NIL_P(password) ? NULL : RSTRING_PTR(password),
-                                              NIL_P(password) ? 0 : RSTRING_LEN(password),
-                                              &createParams, &conn));
+                                              NSTR_PTR(username), NSTR_LEN(username),
+                                              NSTR_PTR(password), NSTR_LEN(password),
+                                              &create_params, &conn));
     RB_GC_GUARD(username);
     RB_GC_GUARD(password);
-    obj = rbdpi_from_conn(conn);
-    if (!NIL_P(params)) {
-        rbdpi_copy_dpiConnCreateParams(params, &createParams);
-    }
-    return obj;
+    RB_GC_GUARD(gc_guard);
+    return rbdpi_from_conn(conn, &create_params, &pool->enc);
 }
 
 static VALUE pool_close(VALUE self, VALUE mode)
@@ -209,8 +216,8 @@ void Init_rbdpi_pool(VALUE mDpi)
 {
     VALUE cPool = rb_define_class_under(mDpi, "Pool", rb_cObject);
     rb_define_alloc_func(cPool, pool_alloc);
-    rb_define_method(cPool, "initialize", pool_initialize, 5);
-    rb_define_method(cPool, "connect", pool_connect, 3);
+    rb_define_method(cPool, "initialize", pool_initialize, 4);
+    rb_define_method(cPool, "connection", pool_get_connection, 4);
     rb_define_method(cPool, "close", pool_close, 1);
     rb_define_method(cPool, "busy_count", pool_get_busy_count, 0);
     rb_define_method(cPool, "encoding_info", pool_get_encoding_info, 0);

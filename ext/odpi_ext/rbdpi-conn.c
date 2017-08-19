@@ -37,6 +37,13 @@
 static VALUE cConn;
 static VALUE sym_drop;
 
+static void conn_mark(void *arg)
+{
+    conn_t *conn = (conn_t *)arg;
+
+    rb_gc_mark(conn->tag);
+}
+
 static void conn_free(void *arg)
 {
     conn_t *conn = (conn_t *)arg;
@@ -49,48 +56,49 @@ static void conn_free(void *arg)
 
 static const struct rb_data_type_struct conn_data_type = {
     "ODPI::Dpi::Conn",
-    {NULL, conn_free, },
+    {conn_mark, conn_free, },
     NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
 };
 
 static VALUE conn_alloc(VALUE klass)
 {
     conn_t *conn;
+    VALUE obj = TypedData_Make_Struct(klass, conn_t, &conn_data_type, conn);
 
-    return TypedData_Make_Struct(klass, conn_t, &conn_data_type, conn);
+    conn->tag = Qnil;
+    return obj;
 }
 
-static VALUE conn_initialize(VALUE self, VALUE username, VALUE password, VALUE connect_string, VALUE common_params, VALUE create_params)
+static VALUE conn_initialize(VALUE self, VALUE username, VALUE password, VALUE database, VALUE auth_mode, VALUE params)
 {
     conn_t *conn = (conn_t *)rb_check_typeddata(self, &conn_data_type);
-    dpiCommonCreateParams commonParams;
-    dpiConnCreateParams createParams;
-    dpiEncodingInfo encinfo;
+    dpiCommonCreateParams common_params;
+    dpiConnCreateParams create_params;
+    VALUE gc_guard1;
+    VALUE gc_guard2;
 
     if (conn->handle != NULL) {
         rb_raise(rb_eRuntimeError, "Try to initialize an initialized connection");
     }
-
-    CHK_NSTR(username);
-    CHK_NSTR(password);
-    CHK_NSTR(connect_string);
-    rbdpi_fill_dpiCommonCreateParams(&commonParams, common_params);
-    rbdpi_fill_dpiConnCreateParams(&createParams, create_params);
+    conn->enc = rbdpi_get_encodings(params);
+    CHK_NSTR_ENC(username, conn->enc.enc);
+    CHK_NSTR_ENC(password, conn->enc.enc);
+    CHK_NSTR_ENC(database, conn->enc.enc);
+    gc_guard1 = rbdpi_fill_dpiCommonCreateParams(&common_params, params, conn->enc.enc);
+    gc_guard2 = rbdpi_fill_dpiConnCreateParams(&create_params, params, auth_mode, conn->enc.enc);
+    if (NIL_P(username) && NIL_P(password)) {
+        create_params.externalAuth = 1;
+    }
     CHK(dpiConn_create_without_gvl(rbdpi_g_context,
                                    NSTR_PTR(username), NSTR_LEN(username),
                                    NSTR_PTR(password), NSTR_LEN(password),
-                                   NSTR_PTR(connect_string), NSTR_LEN(connect_string),
-                                   &commonParams, &createParams, &conn->handle));
+                                   NSTR_PTR(database), NSTR_LEN(database),
+                                   &common_params, &create_params, &conn->handle));
     RB_GC_GUARD(username);
     RB_GC_GUARD(password);
-    RB_GC_GUARD(connect_string);
-    RB_GC_GUARD(common_params);
-    if (!NIL_P(create_params)) {
-        rbdpi_copy_dpiConnCreateParams(create_params, &createParams);
-    }
-    CHK(dpiConn_getEncodingInfo(conn->handle, &encinfo));
-    conn->enc.enc = rb_enc_find(encinfo.encoding);
-    conn->enc.nenc = rb_enc_find(encinfo.nencoding);
+    RB_GC_GUARD(database);
+    RB_GC_GUARD(gc_guard1);
+    RB_GC_GUARD(gc_guard2);
     return self;
 }
 
@@ -337,11 +345,12 @@ static VALUE conn_new_subscription(VALUE self, VALUE params)
     dpiSubscr *handle;
     subscr_t *subscr;
     VALUE obj;
+    VALUE gc_guard;
 
-    rbdpi_fill_dpiSubscrCreateParams(&create_params, params);
+    gc_guard = rbdpi_fill_dpiSubscrCreateParams(&create_params, params, conn->enc.enc);
     obj = rbdpi_subscr_prepare(&subscr, &create_params, &conn->enc);
     CHK(dpiConn_newSubscription(conn->handle, &create_params, &handle, NULL));
-    RB_GC_GUARD(params);
+    RB_GC_GUARD(gc_guard);
     subscr->handle = handle;
     rbdpi_subscr_start(subscr);
     return obj;
@@ -560,16 +569,18 @@ void Init_rbdpi_conn(VALUE mDpi)
     rb_define_method(cConn, "startup_database", conn_startup_database, 1);
 }
 
-VALUE rbdpi_from_conn(dpiConn *handle)
+VALUE rbdpi_from_conn(dpiConn *handle, dpiConnCreateParams *params, rbdpi_enc_t *enc)
 {
     conn_t *conn;
     VALUE obj = TypedData_Make_Struct(cConn, conn_t, &conn_data_type, conn);
-    dpiEncodingInfo encinfo;
 
     conn->handle = handle;
-    CHK(dpiConn_getEncodingInfo(conn->handle, &encinfo));
-    conn->enc.enc = rb_enc_find(encinfo.encoding);
-    conn->enc.nenc = rb_enc_find(encinfo.nencoding);
+    conn->enc = *enc;
+    if (params->outTag != NULL && params->outTagLength != 0) {
+        conn->tag = rb_external_str_new_with_enc(params->outTag, params->outTagLength, enc->enc);
+    } else {
+        conn->tag = Qnil;
+    }
     return obj;
 }
 

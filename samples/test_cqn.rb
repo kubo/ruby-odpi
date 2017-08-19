@@ -16,8 +16,8 @@
 # (ii) the Apache License v 2.0. (http://www.apache.org/licenses/LICENSE-2.0)
 #-----------------------------------------------------------------------------
 
-require 'odpi_ext'
-require File.join(File.dirname(__FILE__), 'config.rb')
+require 'odpi'
+require File.join(File.dirname(File.absolute_path(__FILE__)), 'config.rb')
 
 #-----------------------------------------------------------------------------
 # test_callback
@@ -56,15 +56,10 @@ end
 
 # connect to database
 # NOTE: events mode must be configured
-create_params = ODPI::Dpi::CommonCreateParams.new
-create_params.events = true
-conn = ODPI::Dpi::Conn.new($main_user, $main_password, $connect_string, create_params, nil)
+conn = ODPI.connect($main_user, $main_password, $connect_string, :event => true)
 
 # create subscription
-params = ODPI::Dpi::SubscrCreateParams.new
-params.qos = [:query, :rowids]
-params.callback = test_callback
-subscr = conn.new_subscription(params)
+subscr = conn.new_subscription(:qos => [:query, :rowids], :callback => test_callback)
 
 # register query
 sql_text = "select * from TestTempTable"
@@ -93,6 +88,6 @@ end
 
 # clean up
 subscr.close
-conn.close(nil, nil)
+conn.close
 
 puts "Done."

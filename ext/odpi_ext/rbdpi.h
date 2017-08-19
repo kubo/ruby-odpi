@@ -39,7 +39,7 @@
 #include <dpi.h>
 #include "rbdpi-func.h"
 
-#define DEFAULT_DRIVER_NAME "ruby-odpi_ext : " RBODPI_VERSION
+#define DEFAULT_DRIVER_NAME "ruby-odpi : " RBODPI_VERSION
 
 #ifdef WIN32
 #define mutex_t CRITICAL_SECTION
@@ -66,6 +66,7 @@ typedef struct subscr_callback_ctx subscr_callback_ctx_t;
 typedef struct {
     dpiConn *handle;
     rbdpi_enc_t enc;
+    VALUE tag;
 } conn_t;
 
 /* ODPI::Dpi::DataType
@@ -124,6 +125,7 @@ typedef struct {
 
 typedef struct {
     dpiPool *handle;
+    rbdpi_enc_t enc;
 } pool_t;
 
 typedef struct {
@@ -210,12 +212,22 @@ static inline enum enc_type rbdpi_ora2enc_type(dpiOracleTypeNum oratype)
 
 /* rbdpi.c */
 extern const dpiContext *rbdpi_g_context;
+extern VALUE rbdpi_sym_encoding;
+extern VALUE rbdpi_sym_nencoding;
 VALUE rbdpi_initialize_error(VALUE self);
 
 /* rbdpi-conn.c */
 void Init_rbdpi_conn(VALUE mDpi);
-VALUE rbdpi_from_conn(dpiConn *conn);
+VALUE rbdpi_from_conn(dpiConn *conn, dpiConnCreateParams *params, rbdpi_enc_t *enc);
 conn_t *rbdpi_to_conn(VALUE obj);
+
+/* rbdpi-create-params.c */
+void Init_rbdpi_create_params(VALUE mODPI);
+rbdpi_enc_t rbdpi_get_encodings(VALUE params);
+VALUE rbdpi_fill_dpiCommonCreateParams(dpiCommonCreateParams *dpi_params, VALUE params, rb_encoding *enc);
+VALUE rbdpi_fill_dpiConnCreateParams(dpiConnCreateParams *dpi_params, VALUE params, VALUE auth_mode, rb_encoding *enc);
+VALUE rbdpi_fill_dpiPoolCreateParams(dpiPoolCreateParams *dpi_params, VALUE params, rb_encoding *enc);
+VALUE rbdpi_fill_dpiSubscrCreateParams(dpiSubscrCreateParams *dpi_params, VALUE params, rb_encoding *enc);
 
 /* rbdpi-data.c */
 VALUE rbdpi_from_dpiData(const dpiData *data, dpiNativeTypeNum type, VALUE datatype);
@@ -318,12 +330,6 @@ stmt_t *rbdpi_to_stmt(VALUE obj);
 
 /* rbdpi-struct.c */
 void Init_rbdpi_struct(VALUE mDpi);
-void rbdpi_copy_dpiConnCreateParams(VALUE dest, const dpiConnCreateParams *src);
-void rbdpi_copy_dpiPoolCreateParams(VALUE dest, const dpiPoolCreateParams *src);
-void rbdpi_fill_dpiCommonCreateParams(dpiCommonCreateParams *params, VALUE val);
-void rbdpi_fill_dpiConnCreateParams(dpiConnCreateParams *params, VALUE val);
-void rbdpi_fill_dpiPoolCreateParams(dpiPoolCreateParams *params, VALUE val);
-void rbdpi_fill_dpiSubscrCreateParams(dpiSubscrCreateParams *params, VALUE val);
 VALUE rbdpi_from_dpiEncodingInfo(const dpiEncodingInfo *info);
 VALUE rbdpi_from_dpiErrorInfo(const dpiErrorInfo *error);
 VALUE rbdpi_from_dpiIntervalDS(const dpiIntervalDS *intvl);

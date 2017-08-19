@@ -112,7 +112,7 @@ static VALUE from_dpiSubscrMessageRow(const dpiSubscrMessageRow *row);
 
 static subscr_callback_ctx_t *subscr_callback_ctx_alloc(VALUE proc, rb_encoding *enc)
 {
-    subscr_callback_ctx_t *ctx = xmalloc(sizeof(subscr_callback_ctx_t));
+    subscr_callback_ctx_t *ctx = RB_ZALLOC(subscr_callback_ctx_t);
 #ifndef WIN32
     int fds[2];
     int fd_flags;
@@ -183,16 +183,14 @@ static void subscr_callback_ctx_set_close(subscr_callback_ctx_t *ctx)
 static void subscr_callback_ctx_notify(subscr_callback_ctx_t *ctx)
 {
 #ifdef WIN32
-        SetEvent(ctx->hEvent);
+    SetEvent(ctx->hEvent);
 #else
-        {
-            char dummy = 0;
-            int rv;
+    char dummy = 0;
+    int rv;
 
-            do {
-                rv = write(ctx->write_fd, &dummy, 1);
-            } while (rv == -1 && errno == EINTR);
-        }
+    do {
+        rv = write(ctx->write_fd, &dummy, 1);
+    } while (rv == -1 && errno == EINTR);
 #endif
 }
 
