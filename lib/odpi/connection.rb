@@ -29,5 +29,10 @@ module ODPI
     def new_subscription(params)
       @conn.new_subscription(params)
     end
+
+    def prepare(sql, scrollable: false, tag: nil)
+      stmt = @conn.prepare_stmt(scrollable, sql, tag)
+      Statement.new(@conn, stmt)
+    end
   end # Connection
 end

@@ -1,6 +1,7 @@
 require 'odpi_ext.so'
 require 'odpi/connection.rb'
 require 'odpi/pool.rb'
+require 'odpi/statement.rb'
 require 'odpi/version.rb'
 
 module ODPI
@@ -15,7 +16,7 @@ module ODPI
   RUBY_TO_ORACLE_ENCODING['Windows-31J'] = 'JA16SJISTILDE'
 
   # @private
-  def parse_connect_string(conn_str)
+  def self.parse_connect_string(conn_str)
     if /^([^(\s|\@)]*)\/([^(\s|\@)]*)(?:\@(\S+))?(?:\s+as\s+(\S*)\s*)?$/i =~ conn_str
       username = $1
       password = $2

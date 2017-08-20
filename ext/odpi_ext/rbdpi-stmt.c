@@ -104,14 +104,14 @@ static VALUE stmt_is_dml_p(VALUE self)
 {
     stmt_t *stmt = rbdpi_to_stmt(self);
 
-    return rbdpi_from_dpiStatementType(stmt->info.statementType);
+    return stmt->info.isDML ? Qtrue : Qfalse;
 }
 
 static VALUE stmt_get_statement_type(VALUE self)
 {
     stmt_t *stmt = rbdpi_to_stmt(self);
 
-    return stmt->info.isDML ? Qtrue : Qfalse;
+    return rbdpi_from_dpiStatementType(stmt->info.statementType);
 }
 
 static VALUE stmt_is_returning_p(VALUE self)
@@ -125,6 +125,9 @@ static VALUE stmt_bind_by_name(VALUE self, VALUE name, VALUE var)
 {
     stmt_t *stmt = rbdpi_to_stmt(self);
 
+    if (SYMBOL_P(name)) {
+        name = rb_sym2str(name);
+    }
     CHK_STR_ENC(name, stmt->enc.enc);
     CHK(dpiStmt_bindByName(stmt->handle, RSTRING_PTR(name),
                            RSTRING_LEN(name), rbdpi_to_var(var)->handle));
@@ -242,7 +245,7 @@ static VALUE stmt_get_bind_names(VALUE self)
     for (idx = 0; idx < count; idx++) {
         rb_ary_push(ary, rb_external_str_new_with_enc(names[idx], lengths[idx], stmt->enc.enc));
     }
-    return self;
+    return ary;
 }
 
 static VALUE stmt_get_fetch_array_size(VALUE self)

@@ -3,7 +3,7 @@
 #   Tests continuous query notification.
 #-----------------------------------------------------------------------------
 #
-# This was ported from Test_CQN.c in ODPI-C.
+# This was ported from TestCQN.c in ODPI-C.
 # The following is the original copyright:
 #-----------------------------------------------------------------------------
 # Copyright (c) 2016, 2017 Oracle and/or its affiliates.  All rights reserved.

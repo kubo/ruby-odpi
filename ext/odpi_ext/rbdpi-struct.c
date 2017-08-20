@@ -58,6 +58,7 @@ static VALUE cTimestamp;
 
 static ID id_at_name;
 static ID id_at_type_info;
+static ID id_at_nullable;
 
 static inline VALUE check_safe_cstring_or_nil(VALUE val)
 {
@@ -517,6 +518,9 @@ static VALUE query_info_inspect(VALUE self)
     rb_str_buf_append(str, rb_ivar_get(self, id_at_name));
     rb_str_buf_cat_ascii(str, " ");
     rb_str_buf_append(str, rb_ivar_get(self, id_at_type_info));
+    if (!RTEST(rb_ivar_get(self, id_at_nullable))) {
+        rb_str_buf_cat_ascii(str, " NOT NULL");
+    }
     rb_str_buf_cat_ascii(str, ">");
     return str;
 }
@@ -539,6 +543,16 @@ static VALUE query_info_get_name(VALUE self)
 static VALUE query_info_get_type_info(VALUE self)
 {
     return rb_ivar_get(self, id_at_type_info);
+}
+
+/*
+ * Gets whether the data that is being queried may return null values
+ *
+ * @return [Boolean]
+ */
+static VALUE query_info_get_nullable_p(VALUE self)
+{
+    return rb_ivar_get(self, id_at_nullable);
 }
 
 /* Timestamp */
@@ -736,6 +750,7 @@ void Init_rbdpi_struct(VALUE mDpi)
 {
     id_at_name = rb_intern("@name");
     id_at_type_info = rb_intern("@type_info");
+    id_at_nullable = rb_intern("@nullable");
 
     /* EncodingInfo */
     cEncodingInfo = rb_define_class_under(mDpi, "EncodingInfo", rb_cObject);
@@ -795,6 +810,7 @@ void Init_rbdpi_struct(VALUE mDpi)
     rb_define_method(cQueryInfo, "inspect", query_info_inspect, 0);
     rb_define_method(cQueryInfo, "name", query_info_get_name, 0);
     rb_define_method(cQueryInfo, "type_info", query_info_get_type_info, 0);
+    rb_define_method(cQueryInfo, "nullable?", query_info_get_nullable_p, 0);
 
     /* Timestamp */
     cTimestamp = rb_define_class_under(mDpi, "Timestamp", rb_cObject);
@@ -876,10 +892,11 @@ VALUE rbdpi_from_dpiQueryInfo(const dpiQueryInfo *info, const rbdpi_enc_t *enc)
 {
     VALUE obj = rb_obj_alloc(cQueryInfo);
     VALUE name = rb_external_str_new_with_enc(info->name, info->nameLength, enc->enc);
-    VALUE datatype = rbdpi_from_dpiDataTypeInfo(&info->typeInfo, obj, enc);
+    VALUE datatype = rbdpi_from_dpiDataTypeInfo(&info->typeInfo, Qnil, enc);
 
     rb_ivar_set(obj, id_at_name, name);
     rb_ivar_set(obj, id_at_type_info, datatype);
+    rb_ivar_set(obj, id_at_nullable, info->nullOk ? Qtrue : Qfalse);
     return obj;
 }
 

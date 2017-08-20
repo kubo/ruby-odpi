@@ -424,6 +424,15 @@ VALUE rbdpi_from_dpiDataTypeInfo(const dpiDataTypeInfo *info, VALUE owner, const
     data_type_t *dt;
     VALUE obj = TypedData_Make_Struct(cDataType, data_type_t, &data_type_data_type, dt);
 
+    if (NIL_P(owner)) {
+        dpiDataTypeInfo *buf;
+
+        owner = rb_str_buf_new(sizeof(*info));
+        buf = (dpiDataTypeInfo *)RSTRING_PTR(owner);
+        *buf = *info;
+        info = buf;
+    }
+
     dt->info = info;
     dt->owner = owner;
     dt->self = obj;

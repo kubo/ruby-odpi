@@ -55,7 +55,7 @@ static VALUE pool_alloc(VALUE klass)
 
 static VALUE pool_initialize(VALUE self, VALUE username, VALUE password, VALUE database, VALUE params)
 {
-    pool_t *pool = rbdpi_to_pool(self);
+    pool_t *pool = (pool_t *)rb_check_typeddata(self, &pool_data_type);
     dpiCommonCreateParams common_params;
     dpiPoolCreateParams create_params;
     VALUE gc_guard1;
