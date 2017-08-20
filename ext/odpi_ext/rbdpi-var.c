@@ -61,6 +61,33 @@ static VALUE var_alloc(VALUE klass)
     return TypedData_Make_Struct(klass, var_t, &var_data_type, var);
 }
 
+static VALUE var_initialize(VALUE self, VALUE rb_conn, VALUE oracle_type, VALUE native_type,
+                          VALUE max_array_size, VALUE size, VALUE size_is_bytes,
+                          VALUE is_array, VALUE objtype)
+{
+    var_t *var = (var_t *)rb_check_typeddata(self, &var_data_type);
+    conn_t *conn = rbdpi_to_conn(rb_conn);
+    dpiOracleTypeNum oracle_type_num = rbdpi_to_dpiOracleTypeNum(oracle_type);
+    dpiNativeTypeNum native_type_num = rbdpi_to_dpiNativeTypeNum(native_type);
+    dpiVar *handle;
+    dpiData *data;
+
+    if (var->handle != NULL) {
+        rb_raise(rb_eRuntimeError, "Try to initialize an initialized connection");
+    }
+
+    CHK(dpiConn_newVar(conn->handle, oracle_type_num, native_type_num,
+                       NUM2UINT(max_array_size), NUM2UINT(size), RTEST(size_is_bytes),
+                       RTEST(is_array), NIL_P(objtype) ? NULL : rbdpi_to_object_type(objtype)->handle,
+                       &handle, &data));
+    var->handle = handle;
+    var->enc = conn->enc;
+    var->oracle_type = oracle_type_num;
+    var->native_type = native_type_num;
+    var->objtype = objtype;
+    return Qnil;
+}
+
 static VALUE var_initialize_copy(VALUE self, VALUE other)
 {
     var_t *var = rbdpi_to_var(self);
@@ -160,7 +187,7 @@ void Init_rbdpi_var(VALUE mDpi)
 {
     cVar = rb_define_class_under(mDpi, "Var", rb_cObject);
     rb_define_alloc_func(cVar, var_alloc);
-    rb_define_method(cVar, "initialize", rbdpi_initialize_error, -1);
+    rb_define_method(cVar, "initialize", var_initialize, 8);
     rb_define_method(cVar, "initialize_copy", var_initialize_copy, 1);
     rb_define_method(cVar, "copy_data", cvar_copy_data, 3);
     rb_define_method(cVar, "num_elements_in_array", cvar_get_num_elements_in_array, 0);

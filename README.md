@@ -15,6 +15,12 @@ understand ODPI-C enough.
 * High-level API - In development
 * Low-level API - In development
 
+## Supported versions
+
+* Ruby 2.3.0 and later
+* Oracle client 11.2 and later
+* Oracle server 9.2 and later (depending on Oracle client version)
+
 ## Documents
 
 http://www.rubydoc.info/github/kubo/ruby-odpi/master

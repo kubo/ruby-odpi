@@ -366,23 +366,6 @@ static VALUE conn_new_temp_lob(VALUE self, VALUE lobtype)
     return rbdpi_from_lob(lob, &conn->enc, lobtype_num);
 }
 
-static VALUE conn_new_var(VALUE self, VALUE oracle_type, VALUE native_type,
-                          VALUE max_array_size, VALUE size, VALUE size_is_bytes,
-                          VALUE is_array, VALUE objtype)
-{
-    conn_t *conn = rbdpi_to_conn(self);
-    dpiOracleTypeNum oracle_type_num = rbdpi_to_dpiOracleTypeNum(oracle_type);
-    dpiNativeTypeNum native_type_num = rbdpi_to_dpiNativeTypeNum(native_type);
-    dpiVar *var;
-    dpiData *data;
-
-    CHK(dpiConn_newVar(conn->handle, oracle_type_num, native_type_num,
-                       NUM2UINT(max_array_size), NUM2UINT(size), RTEST(size_is_bytes),
-                       RTEST(is_array), NIL_P(objtype) ? NULL : rbdpi_to_object_type(objtype)->handle,
-                       &var, &data));
-    return rbdpi_from_var(var, &conn->enc, oracle_type_num, native_type_num, objtype);
-}
-
 static VALUE conn_ping(VALUE self)
 {
     conn_t *conn = rbdpi_to_conn(self);
@@ -551,7 +534,6 @@ void Init_rbdpi_conn(VALUE mDpi)
     rb_define_method(cConn, "new_msg_props", conn_new_msg_props, 0);
     rb_define_method(cConn, "new_subscription", conn_new_subscription, 1);
     rb_define_method(cConn, "new_temp_lob", conn_new_temp_lob, 1);
-    rb_define_method(cConn, "new_var", conn_new_var, 7);
     rb_define_method(cConn, "ping", conn_ping, 0);
     rb_define_method(cConn, "prepare_distrib_trans", conn_prepare_distrib_trans, 0);
     rb_define_method(cConn, "prepare_stmt", conn_prepare_stmt, 3);

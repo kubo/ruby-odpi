@@ -78,7 +78,7 @@ module ODPI
     end
 
     def bind(key, value, type = nil, params = {})
-      var = make_var(value, type, params)
+      var = make_var(value, type, params, 1, false)
       if key.is_a? Integer
         @stmt.bind_by_pos(key, var)
       else
@@ -90,11 +90,11 @@ module ODPI
     end
 
     def [](key)
-      @bind_vars[key][0]
+      @bind_vars[key].get
     end
 
     def []=(key, val)
-      @bind_vars[key][0] = val
+      @bind_vars[key].set(val)
     end
 
     def define(pos, type, params = {})
@@ -114,10 +114,10 @@ module ODPI
         @stmt.query_columns.each_with_index do |col, idx|
           unless @column_vars[idx]
             type = col.type_info
-            @column_vars[idx] = @conn.new_var(type.oracle_type, type.default_native_type, @stmt.fetch_array_size, type.client_size_in_bytes, true, false, type.object_type)
+            @column_vars[idx] = make_var(nil, type.oracle_type, type, @stmt.fetch_array_size, false)
           end
         end
-        unless @execute
+        unless @executed
           @column_vars.each_with_index do |var, idx|
             @stmt.define(idx + 1, var)
           end
@@ -142,19 +142,11 @@ module ODPI
 
     private
 
-    def make_var(value, type, params)
+    def make_var(value, type, params, array_size, is_array)
       type = value.class if type.nil?
-      if type == String
-        length = params[:length]
-        length = value.length if length.nil?
-        var = @conn.new_var(:varchar, :bytes, 1, length, true, false, nil)
-      elsif type == Integer
-        var = @conn.new_var(:number, :int64, 1, 0, false, false, nil)
-      elsif type == Dpi::Rowid
-        var = @conn.new_var(:rowid, :rowid, 1, 0, false, false, nil)
-      else
-        raise "Unsupported bind type #{type}"
-      end
+      bind_class = BindType::Mapping[type]
+      raise "Unsupported bind type: #{type}" if bind_class.nil?
+      bind_class.create(@conn, value, type, params, array_size, is_array)
     end
   end
 end

@@ -231,7 +231,7 @@ void Init_rbdpi_msg_props(VALUE mDpi)
     rb_define_method(cMsgProps, "exception_q=", msg_props_set_exception_q, 1);
     rb_define_method(cMsgProps, "expiration=", msg_props_set_expiration, 1);
     rb_define_method(cMsgProps, "original_msg_id=", msg_props_set_original_msg_id, 1);
-    rb_define_method(cMsgProps, "priority", msg_props_set_priority, 1);
+    rb_define_method(cMsgProps, "priority=", msg_props_set_priority, 1);
 }
 
 VALUE rbdpi_from_msg_props(dpiMsgProps *handle, rb_encoding *enc)

@@ -347,7 +347,6 @@ void rbdpi_subscr_start(subscr_t *subscr);
 
 /* rbdpi-var.c */
 void Init_rbdpi_var(VALUE mDpi);
-VALUE rbdpi_from_var(dpiVar *var, const rbdpi_enc_t *enc, dpiOracleTypeNum oracle_type, dpiNativeTypeNum native_type, VALUE objtype);
 var_t *rbdpi_to_var(VALUE obj);
 
 /* rbdpi-version-info.c */
