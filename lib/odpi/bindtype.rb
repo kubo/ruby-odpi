@@ -71,6 +71,14 @@ module ODPI
         end
         self
       end
+
+      def convert_in(val)
+        val
+      end
+
+      def convert_out(val)
+        val
+      end
     end
 
     class BinaryDouble
@@ -90,12 +98,12 @@ module ODPI
         super(conn, :number, :bytes, array_size, 0, false, is_array, nil)
       end
 
-      def [](idx)
-        super(idx)&.to_f
+      def convert_in(val)
+        val.to_f.to_s
       end
 
-      def []=(idx, val)
-        super(idx, val&.to_f&.to_s)
+      def convert_out(val)
+        val.to_f
       end
     end
 
@@ -104,19 +112,32 @@ module ODPI
         super(conn, :number, :bytes, array_size, 0, false, is_array, nil)
       end
 
-      def [](idx)
-        super(idx)&.to_i
+      def convert_in(val)
+        val.to_i.to_s
       end
 
-      def []=(idx, val)
-        super(idx, val&.to_i&.to_s)
+      def convert_out(val)
+        val.to_i
+      end
+    end
+
+    class Int64 < Base
+      def initialize(conn, value, type, params, array_size, is_array)
+        super(conn, :number, :int64, array_size, 0, false, is_array, nil)
       end
     end
 
     class Number
       def self.create(conn, value, type, params, array_size, is_array)
         if params.scale == 0
-          Integer.new(conn, value, type, params, array_size, is_array)
+          prec = params.precision
+          if prec == 0
+            Float.new(conn, value, type, params, array_size, is_array)
+          elsif prec < 19
+            Int64.new(conn, value, type, params, array_size, is_array)
+          else
+            Integer.new(conn, value, type, params, array_size, is_array)
+          end
         else
           Float.new(conn, value, type, params, array_size, is_array)
         end
@@ -127,11 +148,11 @@ module ODPI
       def initialize(conn, value, type, params, array_size, is_array)
         if params.is_a? Hash
           size = params[:length]
-          size = value.length if size.nil?
+          size = value.bytesize if size.nil?
         else
           size = params.client_size_in_bytes
         end
-        super(conn, :raw, :bytes, array_size, size, false, is_array, nil)
+        super(conn, :raw, :bytes, array_size, size, true, is_array, nil)
       end
     end
 
@@ -145,7 +166,7 @@ module ODPI
       def initialize(conn, value, type, params, array_size, is_array)
         if params.is_a? Hash
           size = params[:length]
-          size = value.length if size.nil?
+          size = value.size if size.nil?
         else
           size = params.size_in_chars
         end
