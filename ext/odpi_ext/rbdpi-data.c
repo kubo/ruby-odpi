@@ -66,7 +66,7 @@ VALUE rbdpi_from_dpiData2(const dpiData *data, dpiNativeTypeNum type, const rbdp
             return rb_tainted_str_new(data->value.asBytes.ptr, data->value.asBytes.length);
         }
     case DPI_NATIVE_TYPE_TIMESTAMP:
-        return rbdpi_from_dpiTimestamp(&data->value.asTimestamp);
+        return rbdpi_from_dpiTimestamp(&data->value.asTimestamp, oratype);
     case DPI_NATIVE_TYPE_INTERVAL_DS:
         return rbdpi_from_dpiIntervalDS(&data->value.asIntervalDS);
     case DPI_NATIVE_TYPE_INTERVAL_YM:

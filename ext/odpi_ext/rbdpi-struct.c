@@ -54,7 +54,6 @@ static VALUE cError;
 static VALUE cIntervalDS;
 static VALUE cIntervalYM;
 static VALUE cQueryInfo;
-static VALUE cTimestamp;
 
 static ID id_at_name;
 static ID id_at_type_info;
@@ -555,197 +554,6 @@ static VALUE query_info_get_nullable_p(VALUE self)
     return rb_ivar_get(self, id_at_nullable);
 }
 
-/* Timestamp */
-
-static size_t timestamp_memsize(const void *arg)
-{
-    return sizeof(dpiTimestamp);
-}
-
-static const struct rb_data_type_struct timestamp_data_type = {
-    "ODPI::Dpi::Timestamp",
-    {NULL, RUBY_TYPED_DEFAULT_FREE, timestamp_memsize,},
-    NULL, NULL, RUBY_TYPED_FREE_IMMEDIATELY
-};
-#define TO_TIMESTAMP(obj) ((dpiTimestamp *)rb_check_typeddata(obj, &timestamp_data_type))
-
-static VALUE timestamp_alloc(VALUE klass)
-{
-    dpiTimestamp *ts;
-    VALUE obj = TypedData_Make_Struct(klass, dpiTimestamp, &timestamp_data_type, ts);
-    ts->year = 1;
-    ts->month = 1;
-    return obj;
-}
-
-static VALUE timestamp_initialize(VALUE self, VALUE year, VALUE month, VALUE day, VALUE hour, VALUE minute, VALUE second, VALUE fsecond, VALUE tz_hour_offset, VALUE tz_minute_offset)
-{
-    dpiTimestamp ts;
-    ts.year = NUM2INT(year);
-    ts.month = NUM2INT(month);
-    ts.day = NUM2INT(day);
-    ts.hour = NUM2INT(hour);
-    ts.minute = NUM2INT(minute);
-    ts.second = NUM2INT(second);
-    ts.fsecond = NUM2INT(fsecond);
-    ts.tzHourOffset = NUM2INT(tz_hour_offset);
-    ts.tzMinuteOffset = NUM2INT(tz_minute_offset);
-    *TO_TIMESTAMP(self) = ts;
-    return self;
-}
-
-static VALUE timestamp_initialize_copy(VALUE self, VALUE other)
-{
-    *TO_TIMESTAMP(self) = *TO_TIMESTAMP(other);
-    return self;
-}
-
-static VALUE timestamp_inspect(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return rb_sprintf("<%s: %d-%02d-%02d %02d:%02d:%02d.%09d %02d:%02d>",
-                      rb_obj_classname(self),
-                      ts->year, ts->month, ts->day,
-                      ts->hour, ts->minute, ts->second, ts->fsecond,
-                      ts->tzHourOffset, ts->tzMinuteOffset);
-}
-
-static VALUE timestamp_get_year(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->year);
-}
-
-static VALUE timestamp_set_year(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->year = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_month(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->month);
-}
-
-static VALUE timestamp_set_month(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->month = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_day(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->day);
-}
-
-static VALUE timestamp_set_day(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->day = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_hour(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->hour);
-}
-
-static VALUE timestamp_set_hour(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->hour = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_minute(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->minute);
-}
-
-static VALUE timestamp_set_minute(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->minute = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_second(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->second);
-}
-
-static VALUE timestamp_set_second(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->second = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_fsecond(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->fsecond);
-}
-
-static VALUE timestamp_set_fsecond(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->fsecond = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_tz_hour_offset(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->tzHourOffset);
-}
-
-static VALUE timestamp_set_tz_hour_offset(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->tzHourOffset = NUM2INT(val);
-    return val;
-}
-
-static VALUE timestamp_get_tz_minute_offset(VALUE self)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    return INT2NUM(ts->tzMinuteOffset);
-}
-
-static VALUE timestamp_set_tz_minute_offset(VALUE self, VALUE val)
-{
-    dpiTimestamp *ts = TO_TIMESTAMP(self);
-
-    ts->tzMinuteOffset = NUM2INT(val);
-    return val;
-}
-
 void Init_rbdpi_struct(VALUE mDpi)
 {
     id_at_name = rb_intern("@name");
@@ -811,31 +619,6 @@ void Init_rbdpi_struct(VALUE mDpi)
     rb_define_method(cQueryInfo, "name", query_info_get_name, 0);
     rb_define_method(cQueryInfo, "type_info", query_info_get_type_info, 0);
     rb_define_method(cQueryInfo, "nullable?", query_info_get_nullable_p, 0);
-
-    /* Timestamp */
-    cTimestamp = rb_define_class_under(mDpi, "Timestamp", rb_cObject);
-    rb_define_alloc_func(cTimestamp, timestamp_alloc);
-    rb_define_method(cTimestamp, "initialize", timestamp_initialize, 9);
-    rb_define_method(cTimestamp, "initialize_copy", timestamp_initialize_copy, 1);
-    rb_define_method(cTimestamp, "inspect", timestamp_inspect, 0);
-    rb_define_method(cTimestamp, "year", timestamp_get_year, 0);
-    rb_define_method(cTimestamp, "year=", timestamp_set_year, 1);
-    rb_define_method(cTimestamp, "month", timestamp_get_month, 0);
-    rb_define_method(cTimestamp, "month=", timestamp_set_month, 1);
-    rb_define_method(cTimestamp, "day", timestamp_get_day, 0);
-    rb_define_method(cTimestamp, "day=", timestamp_set_day, 1);
-    rb_define_method(cTimestamp, "hour", timestamp_get_hour, 0);
-    rb_define_method(cTimestamp, "hour=", timestamp_set_hour, 1);
-    rb_define_method(cTimestamp, "minute", timestamp_get_minute, 0);
-    rb_define_method(cTimestamp, "minute=", timestamp_set_minute, 1);
-    rb_define_method(cTimestamp, "second", timestamp_get_second, 0);
-    rb_define_method(cTimestamp, "second=", timestamp_set_second, 1);
-    rb_define_method(cTimestamp, "fsecond", timestamp_get_fsecond, 0);
-    rb_define_method(cTimestamp, "fsecond=", timestamp_set_fsecond, 1);
-    rb_define_method(cTimestamp, "tz_hour_offset", timestamp_get_tz_hour_offset, 0);
-    rb_define_method(cTimestamp, "tz_hour_offset=", timestamp_set_tz_hour_offset, 1);
-    rb_define_method(cTimestamp, "tz_minute_offset", timestamp_get_tz_minute_offset, 0);
-    rb_define_method(cTimestamp, "tz_minute_offset=", timestamp_set_tz_minute_offset, 1);
 }
 
 VALUE rbdpi_from_dpiEncodingInfo(const dpiEncodingInfo *info)
@@ -900,13 +683,28 @@ VALUE rbdpi_from_dpiQueryInfo(const dpiQueryInfo *info, const rbdpi_enc_t *enc)
     return obj;
 }
 
-VALUE rbdpi_from_dpiTimestamp(const dpiTimestamp *ts)
+VALUE rbdpi_from_dpiTimestamp(const dpiTimestamp *ts, dpiOracleTypeNum oracle_type)
 {
-    dpiTimestamp *p;
-    VALUE obj = TypedData_Make_Struct(cTimestamp, dpiTimestamp, &timestamp_data_type, p);
+    VALUE elts[9];
+    long n;
 
-    *p = *ts;
-    return obj;
+    elts[0] = INT2FIX(ts->year);
+    elts[1] = INT2FIX(ts->month);
+    elts[2] = INT2FIX(ts->day);
+    elts[3] = INT2FIX(ts->hour);
+    elts[4] = INT2FIX(ts->minute);
+    elts[5] = INT2FIX(ts->second);
+    n = 6;
+    if (oracle_type != DPI_ORACLE_TYPE_DATE) {
+        elts[6] = UINT2NUM(ts->fsecond);
+        n = 7;
+        if (oracle_type != DPI_ORACLE_TYPE_TIMESTAMP) {
+            elts[7] = INT2FIX(ts->tzHourOffset);
+            elts[8] = INT2FIX(ts->tzMinuteOffset);
+            n = 9;
+        }
+    }
+    return rb_ary_new_from_values(n, elts);
 }
 
 void rbdpi_to_dpiIntervalDS(dpiIntervalDS *intvl, VALUE val)
@@ -921,5 +719,20 @@ void rbdpi_to_dpiIntervalYM(dpiIntervalYM *intvl, VALUE val)
 
 void rbdpi_to_dpiTimestamp(dpiTimestamp *ts, VALUE val)
 {
-    *ts = *TO_TIMESTAMP(val);
+    long len;
+
+    if (!rb_type_p(val, T_ARRAY)) {
+        rb_raise(rb_eArgError, "Invalid timestamp format %s (expect Array)",
+                 rb_obj_classname(val));
+    }
+    len = RARRAY_LEN(val);
+    ts->year = (len > 0) ? NUM2INT(RARRAY_AREF(val, 0)) : 1;
+    ts->month = (len > 1) ? NUM2INT(RARRAY_AREF(val, 1)) : 1;
+    ts->day = (len > 2) ? NUM2INT(RARRAY_AREF(val, 2)) : 1;
+    ts->hour = (len > 3) ? NUM2INT(RARRAY_AREF(val, 3)) : 0;
+    ts->minute = (len > 4) ? NUM2INT(RARRAY_AREF(val, 4)) : 0;
+    ts->second = (len > 5) ? NUM2INT(RARRAY_AREF(val, 5)) : 0;
+    ts->fsecond = (len > 6) ? NUM2UINT(RARRAY_AREF(val, 6)) : 0;
+    ts->tzHourOffset = (len > 7) ? NUM2INT(RARRAY_AREF(val, 7)) : 0;
+    ts->tzMinuteOffset = (len > 8) ? NUM2INT(RARRAY_AREF(val, 8)) : 0;
 }

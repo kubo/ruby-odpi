@@ -109,7 +109,7 @@ static VALUE msg_props_get_enq_time(VALUE self)
     dpiTimestamp val;
 
     CHK(dpiMsgProps_getEnqTime(msg_props->handle, &val));
-    return rbdpi_from_dpiTimestamp(&val);
+    return rbdpi_from_dpiTimestamp(&val, DPI_ORACLE_TYPE_DATE);
 }
 
 static VALUE msg_props_get_exception_q(VALUE self)

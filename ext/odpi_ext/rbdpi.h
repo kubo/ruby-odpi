@@ -335,7 +335,7 @@ VALUE rbdpi_from_dpiErrorInfo(const dpiErrorInfo *error);
 VALUE rbdpi_from_dpiIntervalDS(const dpiIntervalDS *intvl);
 VALUE rbdpi_from_dpiIntervalYM(const dpiIntervalYM *intvl);
 VALUE rbdpi_from_dpiQueryInfo(const dpiQueryInfo *info, const rbdpi_enc_t *enc);
-VALUE rbdpi_from_dpiTimestamp(const dpiTimestamp *ts);
+VALUE rbdpi_from_dpiTimestamp(const dpiTimestamp *ts, dpiOracleTypeNum oracle_type);
 void rbdpi_to_dpiIntervalDS(dpiIntervalDS *intvl, VALUE val);
 void rbdpi_to_dpiIntervalYM(dpiIntervalYM *intvl, VALUE val);
 void rbdpi_to_dpiTimestamp(dpiTimestamp *ts, VALUE val);

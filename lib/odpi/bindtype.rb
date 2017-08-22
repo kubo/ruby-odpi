@@ -29,6 +29,7 @@
 # The views and conclusions contained in the software and documentation are those of the
 # authors and should not be interpreted as representing official policies, either expressed
 # or implied, of the authors.
+require 'date'
 
 module ODPI
 
@@ -81,15 +82,126 @@ module ODPI
       end
     end
 
-    class BinaryDouble
+    class BinaryDouble < Base
       def initialize(conn, value, type, params, array_size, is_array)
         super(conn, :native_double, :double, array_size, 0, false, is_array, nil)
       end
     end
 
-    class BinaryFloat
+    class BinaryFloat < Base
       def initialize(conn, value, type, params, array_size, is_array)
         super(conn, :native_float, :float, array_size, 0, false, is_array, nil)
+      end
+    end
+
+    class TimestampBase < Base
+      @@datetime_fsec_base = (1 / ::DateTime.parse('0001-01-01 00:00:00.000000001').sec_fraction).to_i
+
+      def convert_in(val)
+        # year
+        year = val.year
+        # month
+        if val.respond_to? :mon
+          month = val.mon
+        elsif val.respond_to? :month
+          month = val.month
+        else
+          raise "expect Time, Date or DateTime but #{val.class}"
+        end
+        # day
+        if val.respond_to? :mday
+          day = val.mday
+        elsif val.respond_to? :day
+          day = val.day
+        else
+          raise "expect Time, Date or DateTime but #{val.class}"
+        end
+        # hour
+        if val.respond_to? :hour
+          hour = val.hour
+        else
+          hour = 0
+        end
+        # minute
+        if val.respond_to? :min
+          minute = val.min
+        else
+          minute = 0
+        end
+        # second
+        if val.respond_to? :sec
+          sec = val.sec
+        else
+          sec = 0
+        end
+        # fractional second
+        if val.respond_to? :sec_fraction
+          fsec = (val.sec_fraction * @@datetime_fsec_base).to_i
+        elsif val.respond_to? :nsec
+          fsec = val.nsec
+        elsif val.respond_to? :usec
+          fsec = val.usec * 1000
+        else
+          fsec = 0
+        end
+        # time zone
+        if val.respond_to? :offset
+          # DateTime
+          tz_min = (val.offset * 1440).to_i
+        elsif val.respond_to? :utc_offset
+          # Time
+          tz_min = val.utc_offset / 60
+        else
+          tz_hour = nil
+          tz_min = nil
+        end
+        if tz_min
+          if tz_min < 0
+            tz_min = - tz_min
+            tz_hour = - (tz_min / 60)
+            tz_min = (tz_min % 60)
+          else
+            tz_hour = tz_min / 60
+            tz_min = tz_min % 60
+          end
+        end
+        [year, month, day, hour, minute, sec, fsec, tz_hour, tz_min]
+      end
+
+      def convert_out(val)
+        year, month, day, hour, minute, sec, nsec, tz_hour, tz_min = val
+
+        sec += nsec.to_r / 1_000_000_000 if nsec && nsec != 0
+        if tz_hour
+          utc_offset = tz_hour * 3600 + tz_min * 60
+          ::Time.new(year, month, day, hour, minute, sec, utc_offset)
+        else
+          ::Time.utc(year, month, day, hour, minute, sec) # TODO: add a parameter to use Time.local.
+        end
+      end
+    end
+
+    class Date < TimestampBase
+      def initialize(conn, value, type, params, array_size, is_array)
+        super(conn, :date, :timestamp, array_size, 0, false, is_array, nil)
+      end
+    end
+
+    class Timestamp < TimestampBase
+      def initialize(conn, value, type, params, array_size, is_array)
+        super(conn, :timestamp, :timestamp, array_size, 0, false, is_array, nil)
+      end
+    end
+
+    class TimestampTZ < TimestampBase
+      def initialize(conn, value, type, params, array_size, is_array)
+        super(conn, :timestamp_tz, :timestamp, array_size, 0, false, is_array, nil)
+      end
+    end
+
+    class TimestampLTZ < TimestampBase
+      def initialize(conn, value, type, params, array_size, is_array)
+        super(conn, :timestamp_ltz, :timestamp, array_size, 0, false, is_array, nil)
       end
     end
 
@@ -182,6 +294,7 @@ ODPI::BindType::Mapping[Fixnum] = ODPI::BindType::Integer if 0.class != Integer
 ODPI::BindType::Mapping[Integer] = ODPI::BindType::Integer
 ODPI::BindType::Mapping[String] = ODPI::BindType::String
 ODPI::BindType::Mapping[ODPI::Dpi::Rowid] = ODPI::BindType::Rowid
+ODPI::BindType::Mapping[Time] = ODPI::BindType::TimestampTZ
 
 ODPI::BindType::Mapping[:varchar] = ODPI::BindType::String
 ODPI::BindType::Mapping[:nvarchar] = ODPI::BindType::String
@@ -192,3 +305,7 @@ ODPI::BindType::Mapping[:raw] = ODPI::BindType::Raw
 ODPI::BindType::Mapping[:native_double] = ODPI::BindType::BinaryDouble
 ODPI::BindType::Mapping[:native_float] = ODPI::BindType::BinaryFloat
 ODPI::BindType::Mapping[:number] = ODPI::BindType::Number
+ODPI::BindType::Mapping[:date] = ODPI::BindType::Date
+ODPI::BindType::Mapping[:timestamp] = ODPI::BindType::Timestamp
+ODPI::BindType::Mapping[:timestamp_tz] = ODPI::BindType::TimestampTZ
+ODPI::BindType::Mapping[:timestamp_ltz] = ODPI::BindType::TimestampLTZ
