@@ -85,14 +85,6 @@ static VALUE lob_close_resource(VALUE self)
     return self;
 }
 
-static VALUE lob_flush_buffer(VALUE self)
-{
-    lob_t *lob = rbdpi_to_lob(self);
-
-    CHK(dpiLob_flushBuffer(lob->handle));
-    return self;
-}
-
 static VALUE lob_get_buffer_size(VALUE self, VALUE size_in_chars)
 {
     lob_t *lob = rbdpi_to_lob(self);
@@ -258,7 +250,6 @@ void Init_rbdpi_lob(VALUE mDpi)
     rb_define_method(cLob, "initialize_copy", lob_initialize_copy, 1);
     rb_define_method(cLob, "close", lob_close, 0);
     rb_define_method(cLob, "close_resource", lob_close_resource, 0);
-    rb_define_method(cLob, "flush_buffer", lob_flush_buffer, 0);
     rb_define_method(cLob, "buffer_size", lob_get_buffer_size, 1);
     rb_define_method(cLob, "chunk_size", lob_get_chunk_size, 0);
     rb_define_method(cLob, "directory_and_file_name", lob_get_directory_and_file_name, 0);
