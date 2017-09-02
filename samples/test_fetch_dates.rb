@@ -28,11 +28,14 @@ conn = pool.connection
 stmt = conn.prepare("select * from TestTimestamps")
 stmt.execute
 
+col_labels = stmt.query_columns.map.with_index do |col, i|
+  format("%-5s %-18s", (i == 0) ? "Rows:" : "", col.name)
+end
+
 # fetch rows
-while rows = stmt.fetch
-  puts "Rows: IntCol = #{rows[0]}"
-  1.upto(rows.size - 1) do |i|
-    puts format("     %-18s = %s", stmt.query_columns[i].name, rows[i] ? rows[i].to_s : "null")
+while row = stmt.fetch
+  row.each_with_index do |col, i|
+    puts "#{col_labels[i]} = #{row[i] || "null"}"
   end
 end
 

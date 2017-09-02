@@ -33,10 +33,9 @@ stmt.execute
 
 # fetch rows
 puts "Fetch rows with IntCol > #{stmt[:intCol]}"
-while rows = stmt.fetch
-
-  puts "Row: Int = #{rows[0]}, String = '#{rows[1]}', Raw = '#{rows[2]}', Rowid = '#{rows[3]}'"
-  rowid = rows[3]
+while row = stmt.fetch
+  puts "Row: Int = #{row[0]}, String = '#{row[1]}', Raw = '#{row[2]}', Rowid = '#{row[3]}'"
+  rowid = row[3]
 end
 puts ""
 
@@ -57,8 +56,8 @@ stmt.bind(1, rowid)
 stmt.execute
 
 # fetch rows
-while rows = stmt.fetch
-  puts "Row: Int = #{rows[0]}"
+while row = stmt.fetch
+  puts "Row: Int = #{row[0]}"
 end
 stmt.close
 conn.close
