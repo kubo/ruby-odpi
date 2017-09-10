@@ -35,8 +35,6 @@
 #include "rbdpi.h"
 
 static VALUE cVar;
-static ID id_convert_in;
-static ID id_convert_out;
 
 static void var_mark(void *arg)
 {
@@ -142,7 +140,6 @@ static VALUE cvar_aref(VALUE self, VALUE pos)
         return Qnil;
     }
     val = rbdpi_from_dpiData2(data + idx, var->native_type, &var->enc, var->oracle_type, var->objtype);
-    val = rb_funcall(self, id_convert_out, 1, val);
     return val;
 }
 
@@ -161,7 +158,6 @@ static VALUE cvar_aset(VALUE self, VALUE pos, VALUE val)
         data[idx].isNull = 1;
         return self;
     }
-    val = rb_funcall(self, id_convert_in, 1, val);
     switch (var->native_type) {
     case DPI_NATIVE_TYPE_BYTES:
         switch (rbdpi_ora2enc_type(var->oracle_type)) {
@@ -198,9 +194,6 @@ static VALUE cvar_aset(VALUE self, VALUE pos, VALUE val)
 
 void Init_rbdpi_var(VALUE mDpi)
 {
-    id_convert_in = rb_intern("convert_in");
-    id_convert_out = rb_intern("convert_out");
-
     cVar = rb_define_class_under(mDpi, "Var", rb_cObject);
     rb_define_alloc_func(cVar, var_alloc);
     rb_define_method(cVar, "initialize", var_initialize, 8);

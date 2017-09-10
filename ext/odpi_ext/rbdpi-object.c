@@ -214,6 +214,13 @@ static VALUE object_trim(VALUE self, VALUE size)
     return self;
 }
 
+static VALUE object_get_object_type(VALUE self)
+{
+    object_t *object = rbdpi_to_object(self);
+
+    return object->objtype;
+}
+
 void Init_rbdpi_object(VALUE mDpi)
 {
     cObject = rb_define_class_under(mDpi, "Object", rb_cObject);
@@ -234,6 +241,7 @@ void Init_rbdpi_object(VALUE mDpi)
     rb_define_method(cObject, "set_attribute_value", object_set_attribute_value, 3);
     rb_define_method(cObject, "set_element_value_by_index", object_set_element_value_by_index, 3);
     rb_define_method(cObject, "trim", object_trim, 1);
+    rb_define_method(cObject, "object_type", object_get_object_type, 0);
 }
 
 VALUE rbdpi_from_object(dpiObject *handle, VALUE objtype)

@@ -91,6 +91,65 @@ module ODPI
       @@oracle_type_to_ruby_class[name] = klass
     end
 
+    module NamedCollection
+      def indexes
+        ary = []
+        idx = @object.first_index
+        while idx
+          ary << idx
+          idx = @object.next_index(idx)
+        end
+        ary
+      end
+
+      def to_hash
+        hash = {}
+        idx = @object.first_index
+        while idx
+          hash[idx] = self[idx]
+          idx = @object.next_index(idx)
+        end
+        hash
+      end
+
+      def to_ary
+        ary = []
+        idx = @object.first_index
+        while idx
+          ary.push(self[idx])
+          idx = @object.next_index(idx)
+        end
+        ary
+      end
+
+      def [](idx)
+        val = @object.element_value_by_index(idx, @bindclass::TYPES[1])
+        val.nil? ? nil : @bindclass.convert_out(@conn, val)
+      end
+
+      def []=(idx, val)
+        val = val.nil? ? nil : @bindclass.convert_in(@conn, val)
+        @object.set_element_value_by_index(idx, @bindclass::TYPES[1], val)
+      end
+
+      def <<(val)
+        val = val.nil? ? nil : @bindclass.convert_in(@conn, val)
+        @object.append_element(val, @bindclass::TYPES[1])
+      end
+
+      def delete_at(idx)
+        @object.delete_element_by_index(idx)
+      end
+
+      def exists_at?(idx)
+        @object.element_exists_by_index?(idx)
+      end
+
+      def trim(num)
+        @object.trim(num)
+      end
+    end
+
     class Base
       def self.inherited(klass)
         class_name = klass.to_s
@@ -109,39 +168,65 @@ module ODPI
         @objtype = objtype || @conn.raw_connection.object_type(ODPI::Object.find_name_by_class(self.class))
         @object = object || @objtype.create_object
         if @objtype.is_collection?
+          self.extend(NamedCollection)
+          @attr_types = nil
+          @elem_type = @objtype.element_type_info
+          @bindclass = ODPI::BindType::ObjectAttrMapping[@elem_type.oracle_type].to_bindclass(@elem_type)
         else
           @attr_types = {}
           @objtype.attributes.each do |attr|
             attr_name = ODPI::Object.oracle_name_to_ruby_identifier_name(attr.name).intern
             @attr_types[attr_name] = attr
           end
+          @elem_type = nil
         end
       end
 
       def method_missing(method_id, *args)
-        if @attr_types.has_key?(method_id)
-          self.class.class_eval do
-            define_method(method_id) do
-              attr = @attr_types[method_id]
-              @object.attribute_value(attr, attr.type_info.default_native_type)
+        unless @objtype.is_collection?
+          if @attr_types.has_key?(method_id)
+            self.class.class_eval do
+              define_method(method_id) do
+                attr = @attr_types[method_id]
+                bindclass = ODPI::BindType::ObjectAttrMapping[attr.type_info.oracle_type].to_bindclass(attr.type_info)
+                val = @object.attribute_value(attr, bindclass::TYPES[1])
+                val.nil? ? nil : bindclass.convert_out(@conn, val)
+              end
             end
-          end
-          self.send(method_id, *args)
-        elsif method_id[-1] == '=' && @attr_types.has_key?(attr_name = method_id[0..-2].intern)
-          self.class.class_eval do
-            define_method(method_id) do |val|
-              attr = @attr_types[attr_name]
-              @object.set_attribute_value(attr, attr.type_info.default_native_type, val)
+            return self.send(method_id, *args)
+          elsif method_id[-1] == '=' && @attr_types.has_key?(attr_name = method_id[0..-2].intern)
+            self.class.class_eval do
+              define_method(method_id) do |val|
+                attr = @attr_types[attr_name]
+                bindclass = ODPI::BindType::ObjectAttrMapping[attr.type_info.oracle_type].to_bindclass(attr.type_info)
+                val = val.nil? ? nil : bindclass.convert_in(@conn, val)
+                @object.set_attribute_value(attr, bindclass::TYPES[1], val)
+              end
             end
+            return self.send(method_id, *args)
           end
-          self.send(method_id, *args)
-        else
-          super(method_id, *args)
         end
+        super(method_id, *args)
+      end
+
+      def to_s
+        attrs = if @attr_types
+                  @attr_types.keys.collect do |name| "#{name}: #{self.send(name).inspect}" end
+                else
+                  ary = self.to_hash.map do |key, val|
+                    "#{key}: #{val.inspect}"
+                  end
+                  if ary.length > 4
+                    ary[0..4] << '...'
+                  else
+                    ary
+                  end
+                end
+        %Q[#<#{self.class}: #{@objtype.schema}.#{@objtype.name} (#{attrs.join(', ')})>]
       end
 
       def inspect
-        %Q[#<#{self.class}: #{@objtype.schema}.#{@objtype.name} (#{__attr_names__.collect do |name| "#{name}: #{self.send(name).inspect}" end.join(', ')}>]
+        self.to_s
       end
 
       def __attr_names__

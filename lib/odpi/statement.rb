@@ -78,13 +78,13 @@ module ODPI
     end
 
     def bind(key, value, type = nil, params = {})
-      var = make_var(value, type, params, 1, false)
+      var = make_var(value, type, params, nil)
       if key.is_a? Integer
-        @stmt.bind_by_pos(key, var)
+        @stmt.bind_by_pos(key, var.raw_var)
       else
-        @stmt.bind_by_name(key, var)
+        @stmt.bind_by_name(key, var.raw_var)
       end
-      var[0] = value
+      var.set(value)
       @bind_vars[key] = var
       self
     end
@@ -114,12 +114,12 @@ module ODPI
         @stmt.query_columns.each_with_index do |col, idx|
           unless @column_vars[idx]
             type = col.type_info
-            @column_vars[idx] = make_var(nil, type.oracle_type, type, @stmt.fetch_array_size, false)
+            @column_vars[idx] = make_var(nil, type.oracle_type, type, @stmt.fetch_array_size)
           end
         end
         unless @executed
           @column_vars.each_with_index do |var, idx|
-            @stmt.define(idx + 1, var)
+            @stmt.define(idx + 1, var.raw_var)
           end
         end
       end
@@ -142,11 +142,28 @@ module ODPI
 
     private
 
-    def make_var(value, type, params, array_size, is_array)
-      type = value.class if type.nil?
-      bind_class = BindType::Mapping[type]
+    def make_var(value, type, params, array_size)
+      is_array = false
+      array_size ||= params[:max_array_size]
+      if type.nil?
+        type = value.class
+        if type == Array
+          type = value[0].class
+          is_array = true
+          array_size ||= value.length
+        end
+      elsif type.is_a? Array
+        type = type[0]
+        is_array = true
+      end
+      array_size ||= 1
+      if type.is_a?(Class) && type < ODPI::Object::Base
+        bind_class = BindType::Mapping[:object]
+      else
+        bind_class = BindType::Mapping[type].to_bindclass(params)
+      end
       raise "Unsupported bind type: #{type}" if bind_class.nil?
-      bind_class.create(@conn, value, type, params, array_size, is_array)
+      bind_class.new(@conn, value, type, params, array_size, is_array)
     end
   end
 end
