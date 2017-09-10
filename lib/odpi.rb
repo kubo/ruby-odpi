@@ -33,6 +33,7 @@
 require 'odpi_ext.so'
 require 'odpi/bindtype.rb'
 require 'odpi/connection.rb'
+require 'odpi/object.rb'
 require 'odpi/pool.rb'
 require 'odpi/statement.rb'
 require 'odpi/version.rb'

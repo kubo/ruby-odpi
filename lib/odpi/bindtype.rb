@@ -285,6 +285,23 @@ module ODPI
         super(conn, :varchar, :bytes, array_size, size, true, is_array, nil)
       end
     end
+
+    class Object < Base
+      def initialize(conn, value, type, params, array_size, is_array)
+        @conn = conn
+        @objtype = params.object_type
+        super(conn, :object, :object, array_size, 0, nil, is_array, @objtype)
+      end
+
+      def convert_in(val)
+        val.__object__
+      end
+
+      def convert_out(val)
+        klass = ODPI::Object.find_class(@objtype.schema, @objtype.name)
+        klass.new(@conn, @objtype, val)
+      end
+    end
   end
 end
 
@@ -309,3 +326,4 @@ ODPI::BindType::Mapping[:date] = ODPI::BindType::Date
 ODPI::BindType::Mapping[:timestamp] = ODPI::BindType::Timestamp
 ODPI::BindType::Mapping[:timestamp_tz] = ODPI::BindType::TimestampTZ
 ODPI::BindType::Mapping[:timestamp_ltz] = ODPI::BindType::TimestampLTZ
+ODPI::BindType::Mapping[:object] = ODPI::BindType::Object

@@ -438,6 +438,7 @@ VALUE rbdpi_from_dpiDataTypeInfo(const dpiDataTypeInfo *info, VALUE owner, const
     dt->self = obj;
     if (info->objectType != NULL) {
         dt->objtype = rbdpi_from_object_type(info->objectType, enc);
+        dpiObjectType_addRef(info->objectType);
     } else {
         dt->objtype = Qnil;
     }
